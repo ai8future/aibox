@@ -1,41 +1,57 @@
-# Binaries
-bin/
+# Secrets
+.env
+.env.local
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Python
+__pycache__/
+.venv/
+venv/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+
+# PHP
+/vendor
+
+# Go
 *.exe
+*.test
+.gocache/
+bin/
 *.exe~
 *.dll
 *.so
 *.dylib
-
-# Test binary, built with `go test -c`
-*.test
-
-# Output of the go coverage tool
 *.out
 coverage.html
 
-# Generated protobuf code
-gen/
+# Node
+node_modules/
+dist/
 
-# IDE
+# IDE/Editor
 .idea/
+/.idea
 .vscode/
 *.swp
 *.swo
 *~
 
-# OS
-.DS_Store
-Thumbs.db
+# Claude
+.claude/settings.local.json
 
-# Environment files
-.env
-.env.local
-*.env
-
-# Build
-dist/
+# Generated protobuf code
+gen/
 
 # Temporary files
 tmp/
 *.tmp
-*.log
