@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-01-02
+
+### Security
+- **BREAKING**: Server now requires Redis in production mode to prevent authentication bypass
+- Add input size validation to prevent DoS attacks (100KB user input, 50KB instructions, 100 history messages)
+- Fix rate limiting race condition with atomic Lua script
+- Sanitize error messages to prevent information leakage
+- Validate request IDs to prevent log injection attacks
+
+### Added
+- `startup_mode` configuration option (`production`/`development`)
+- `AIBOX_STARTUP_MODE` environment variable override
+- Input validation package with size limits
+- Error sanitization package
+- Request ID validation and generation
+
+### Changed
+- Rate limiter uses atomic Redis Lua scripts instead of separate commands
+
+### Removed
+- Unused `extractTextFromValue` function from Anthropic provider
+
 ## [0.1.0] - 2026-01-02
 
 ### Added
