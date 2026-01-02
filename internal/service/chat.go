@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/cliffpyles/aibox/internal/auth"
+	sanitize "github.com/cliffpyles/aibox/internal/errors"
 	"github.com/cliffpyles/aibox/internal/provider"
 	"github.com/cliffpyles/aibox/internal/provider/anthropic"
 	"github.com/cliffpyles/aibox/internal/provider/gemini"
@@ -117,7 +118,12 @@ func (s *ChatService) GenerateReply(ctx context.Context, req *pb.GenerateReplyRe
 				// Return original error if fallback also fails
 			}
 		}
-		return nil, status.Errorf(codes.Internal, "provider error: %v", err)
+		slog.Error("provider request failed",
+			"provider", selectedProvider.Name(),
+			"error", err,
+			"request_id", req.RequestId,
+		)
+		return nil, status.Error(codes.Internal, sanitize.SanitizeForClient(err))
 	}
 
 	// Record token usage for rate limiting
@@ -187,7 +193,7 @@ func (s *ChatService) GenerateReplyStream(req *pb.GenerateReplyRequest, stream p
 	// Generate streaming reply
 	chunks, err := selectedProvider.GenerateReplyStream(ctx, params)
 	if err != nil {
-		return status.Errorf(codes.Internal, "stream init error: %v", err)
+		return status.Error(codes.Internal, sanitize.SanitizeForClient(err))
 	}
 
 	// Forward chunks
