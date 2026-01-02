@@ -12,6 +12,21 @@ const (
 	rateLimitPrefix = "aibox:ratelimit:"
 )
 
+// rateLimitScript is a Lua script for atomic rate limiting
+// It increments the counter and sets TTL atomically, returning the new count
+const rateLimitScript = `
+local key = KEYS[1]
+local limit = tonumber(ARGV[1])
+local window = tonumber(ARGV[2])
+
+local current = redis.call('INCR', key)
+if current == 1 then
+    redis.call('EXPIRE', key, window)
+end
+
+return current
+`
+
 // RateLimiter implements Redis-backed rate limiting
 type RateLimiter struct {
 	redis          *redis.Client
@@ -86,22 +101,21 @@ func (r *RateLimiter) RecordTokens(ctx context.Context, clientID string, tokens 
 	return nil
 }
 
-// checkLimit checks and increments a rate limit counter
+// checkLimit checks and increments a rate limit counter atomically
 func (r *RateLimiter) checkLimit(ctx context.Context, clientID, limitType string, limit int, window time.Duration) error {
 	key := fmt.Sprintf("%s%s:%s", rateLimitPrefix, clientID, limitType)
+	windowSeconds := int(window.Seconds())
 
-	// Increment counter
-	count, err := r.redis.Incr(ctx, key)
+	result, err := r.redis.Eval(ctx, rateLimitScript, []string{key}, limit, windowSeconds)
 	if err != nil {
 		return fmt.Errorf("failed to check rate limit: %w", err)
 	}
 
-	// Set expiry on first request in window
-	if count == 1 {
-		_ = r.redis.Expire(ctx, key, window)
+	count, ok := result.(int64)
+	if !ok {
+		return fmt.Errorf("unexpected result type from rate limit script")
 	}
 
-	// Check if over limit
 	if int(count) > limit {
 		return ErrRateLimitExceeded
 	}
