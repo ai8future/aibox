@@ -1,6 +1,8 @@
 package validation
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -45,4 +47,117 @@ func TestValidateGenerateRequest_RejectsOversizedInput(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestValidateGenerateRequest_BoundaryValues(t *testing.T) {
+	tests := []struct {
+		name        string
+		userInput   string
+		instruction string
+		historyLen  int
+		wantErr     error
+	}{
+		{
+			name:      "user input at exact limit passes",
+			userInput: strings.Repeat("x", MaxUserInputBytes),
+			wantErr:   nil,
+		},
+		{
+			name:        "instructions at exact limit passes",
+			userInput:   "test",
+			instruction: strings.Repeat("x", MaxInstructionsBytes),
+			wantErr:     nil,
+		},
+		{
+			name:       "history at exact limit passes",
+			userInput:  "test",
+			historyLen: MaxHistoryCount,
+			wantErr:    nil,
+		},
+		{
+			name:      "user input over limit returns correct error",
+			userInput: strings.Repeat("x", MaxUserInputBytes+1),
+			wantErr:   ErrUserInputTooLarge,
+		},
+		{
+			name:        "instructions over limit returns correct error",
+			userInput:   "test",
+			instruction: strings.Repeat("x", MaxInstructionsBytes+1),
+			wantErr:     ErrInstructionsTooLarge,
+		},
+		{
+			name:       "history over limit returns correct error",
+			userInput:  "test",
+			historyLen: MaxHistoryCount + 1,
+			wantErr:    ErrHistoryTooLong,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateGenerateRequest(tt.userInput, tt.instruction, tt.historyLen)
+			if tt.wantErr == nil {
+				if err != nil {
+					t.Errorf("expected no error, got %v", err)
+				}
+			} else {
+				if !errors.Is(err, tt.wantErr) {
+					t.Errorf("expected error %v, got %v", tt.wantErr, err)
+				}
+			}
+		})
+	}
+}
+
+func TestValidateMetadata(t *testing.T) {
+	tests := []struct {
+		name     string
+		metadata map[string]string
+		wantErr  error
+	}{
+		{
+			name:     "nil metadata passes",
+			metadata: nil,
+			wantErr:  nil,
+		},
+		{
+			name:     "empty metadata passes",
+			metadata: map[string]string{},
+			wantErr:  nil,
+		},
+		{
+			name:     "metadata at exact limit passes",
+			metadata: makeMetadata(MaxMetadataEntries),
+			wantErr:  nil,
+		},
+		{
+			name:     "metadata over limit returns correct error",
+			metadata: makeMetadata(MaxMetadataEntries + 1),
+			wantErr:  ErrMetadataTooLarge,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateMetadata(tt.metadata)
+			if tt.wantErr == nil {
+				if err != nil {
+					t.Errorf("expected no error, got %v", err)
+				}
+			} else {
+				if !errors.Is(err, tt.wantErr) {
+					t.Errorf("expected error %v, got %v", tt.wantErr, err)
+				}
+			}
+		})
+	}
+}
+
+// makeMetadata creates a metadata map with n entries
+func makeMetadata(n int) map[string]string {
+	m := make(map[string]string, n)
+	for i := 0; i < n; i++ {
+		m[fmt.Sprintf("key%d", i)] = fmt.Sprintf("value%d", i)
+	}
+	return m
 }
