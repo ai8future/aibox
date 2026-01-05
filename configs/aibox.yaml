@@ -53,3 +53,15 @@ logging:
 # - development: allows running without optional dependencies
 # Can also be set via AIBOX_STARTUP_MODE environment variable
 startup_mode: "production"
+
+# RAG (Retrieval-Augmented Generation) settings
+# Enable self-hosted vector search for file attachments
+rag:
+  enabled: false                           # Set to true to enable RAG
+  ollama_url: "http://localhost:11434"     # Ollama API for embeddings
+  embedding_model: "nomic-embed-text"      # Embedding model (768 dimensions)
+  qdrant_url: "http://localhost:6333"      # Qdrant REST API
+  docbox_url: "http://localhost:41273"     # Docbox Pandoc API for text extraction
+  chunk_size: 2000                         # Characters per chunk
+  chunk_overlap: 200                       # Overlap between chunks
+  retrieval_top_k: 5                       # Number of chunks to retrieve

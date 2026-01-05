@@ -10,6 +10,10 @@ import (
 	pb "github.com/cliffpyles/aibox/gen/go/aibox/v1"
 	"github.com/cliffpyles/aibox/internal/auth"
 	"github.com/cliffpyles/aibox/internal/config"
+	"github.com/cliffpyles/aibox/internal/rag"
+	"github.com/cliffpyles/aibox/internal/rag/embedder"
+	"github.com/cliffpyles/aibox/internal/rag/extractor"
+	"github.com/cliffpyles/aibox/internal/rag/vectorstore"
 	"github.com/cliffpyles/aibox/internal/redis"
 	"github.com/cliffpyles/aibox/internal/service"
 	"github.com/cliffpyles/aibox/internal/tenant"
@@ -144,7 +148,39 @@ func NewGRPCServer(cfg *config.Config, version VersionInfo) (*grpc.Server, error
 	})
 	pb.RegisterAdminServiceServer(server, adminService)
 
-	// TODO: Register FileService
+	// Register FileService with RAG if enabled
+	var ragService *rag.Service
+	if cfg.RAG.Enabled {
+		// Initialize RAG components
+		emb := embedder.NewOllamaEmbedder(embedder.OllamaConfig{
+			BaseURL: cfg.RAG.OllamaURL,
+			Model:   cfg.RAG.EmbeddingModel,
+		})
+
+		store := vectorstore.NewQdrantStore(vectorstore.QdrantConfig{
+			BaseURL: cfg.RAG.QdrantURL,
+		})
+
+		ext := extractor.NewDocboxExtractor(extractor.DocboxConfig{
+			BaseURL: cfg.RAG.DocboxURL,
+		})
+
+		ragService = rag.NewService(emb, store, ext, rag.ServiceOptions{
+			ChunkSize:     cfg.RAG.ChunkSize,
+			ChunkOverlap:  cfg.RAG.ChunkOverlap,
+			RetrievalTopK: cfg.RAG.RetrievalTopK,
+		})
+
+		fileService := service.NewFileService(ragService)
+		pb.RegisterFileServiceServer(server, fileService)
+
+		slog.Info("RAG enabled",
+			"ollama_url", cfg.RAG.OllamaURL,
+			"embedding_model", cfg.RAG.EmbeddingModel,
+			"qdrant_url", cfg.RAG.QdrantURL,
+			"docbox_url", cfg.RAG.DocboxURL,
+		)
+	}
 
 	tenantCount := 0
 	if tenantMgr != nil {

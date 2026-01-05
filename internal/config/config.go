@@ -20,6 +20,19 @@ type Config struct {
 	Failover    FailoverConfig            `yaml:"failover"`
 	Logging     LoggingConfig             `yaml:"logging"`
 	StartupMode StartupMode               `yaml:"startup_mode"`
+	RAG         RAGConfig                 `yaml:"rag"`
+}
+
+// RAGConfig holds RAG (Retrieval-Augmented Generation) settings
+type RAGConfig struct {
+	Enabled        bool   `yaml:"enabled"`
+	OllamaURL      string `yaml:"ollama_url"`
+	EmbeddingModel string `yaml:"embedding_model"`
+	QdrantURL      string `yaml:"qdrant_url"`
+	DocboxURL      string `yaml:"docbox_url"`
+	ChunkSize      int    `yaml:"chunk_size"`
+	ChunkOverlap   int    `yaml:"chunk_overlap"`
+	RetrievalTopK  int    `yaml:"retrieval_top_k"`
 }
 
 // ServerConfig holds server settings
@@ -145,6 +158,16 @@ func defaultConfig() *Config {
 			Format: "json",
 		},
 		StartupMode: StartupModeProduction,
+		RAG: RAGConfig{
+			Enabled:        false,
+			OllamaURL:      "http://localhost:11434",
+			EmbeddingModel: "nomic-embed-text",
+			QdrantURL:      "http://localhost:6333",
+			DocboxURL:      "http://localhost:41273",
+			ChunkSize:      2000,
+			ChunkOverlap:   200,
+			RetrievalTopK:  5,
+		},
 	}
 }
 
@@ -178,6 +201,38 @@ func (c *Config) applyEnvOverrides() {
 
 	if mode := os.Getenv("AIBOX_STARTUP_MODE"); mode != "" {
 		c.StartupMode = StartupMode(mode)
+	}
+
+	// RAG configuration
+	if enabled := os.Getenv("RAG_ENABLED"); enabled == "true" || enabled == "1" {
+		c.RAG.Enabled = true
+	}
+	if url := os.Getenv("RAG_OLLAMA_URL"); url != "" {
+		c.RAG.OllamaURL = url
+	}
+	if model := os.Getenv("RAG_EMBEDDING_MODEL"); model != "" {
+		c.RAG.EmbeddingModel = model
+	}
+	if url := os.Getenv("RAG_QDRANT_URL"); url != "" {
+		c.RAG.QdrantURL = url
+	}
+	if url := os.Getenv("RAG_DOCBOX_URL"); url != "" {
+		c.RAG.DocboxURL = url
+	}
+	if size := os.Getenv("RAG_CHUNK_SIZE"); size != "" {
+		if s, err := strconv.Atoi(size); err == nil {
+			c.RAG.ChunkSize = s
+		}
+	}
+	if overlap := os.Getenv("RAG_CHUNK_OVERLAP"); overlap != "" {
+		if o, err := strconv.Atoi(overlap); err == nil {
+			c.RAG.ChunkOverlap = o
+		}
+	}
+	if topK := os.Getenv("RAG_RETRIEVAL_TOP_K"); topK != "" {
+		if k, err := strconv.Atoi(topK); err == nil {
+			c.RAG.RetrievalTopK = k
+		}
 	}
 }
 

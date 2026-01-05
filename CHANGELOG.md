@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-01-05
+
+### Added
+- **Self-hosted RAG (Retrieval-Augmented Generation)**: Provider-agnostic file search using Qdrant and Ollama
+- New `internal/rag` package with modular architecture:
+  - `embedder`: Interface and Ollama implementation for text embeddings
+  - `vectorstore`: Interface and Qdrant implementation for vector storage
+  - `extractor`: Interface and Docbox/Pandoc implementation for text extraction
+  - `chunker`: Text chunking with overlap and smart boundary detection
+  - `service`: RAG orchestrator for ingest and retrieval operations
+- Complete FileService gRPC implementation for file store management
+- Docker Compose configuration with Qdrant and Ollama services
+- RAG configuration section in `configs/aibox.yaml`
+- Environment variable overrides for RAG settings (`RAG_ENABLED`, `RAG_OLLAMA_URL`, etc.)
+
+### Changed
+- FileService now uses self-hosted Qdrant instead of provider-specific vector stores
+- Server initialization includes optional RAG service registration when enabled
+
+### Infrastructure
+- Added `docker-compose.yml` with Redis, Qdrant, and Ollama services
+- Added `Dockerfile` for multi-stage Alpine build
+
 ## [0.3.0] - 2026-01-03
 
 ### Added
