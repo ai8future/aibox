@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.5] - 2026-01-07
+
+### Added
+- **Provider client unit tests**: Comprehensive test coverage for all LLM provider clients
+  - OpenAI: buildUserPrompt, mapReasoningEffort, mapServiceTier, isRetryableError, waitForCompletion, extractCitations
+  - Anthropic: buildMessages, extractText, isRetryableError, client capabilities
+  - Gemini: buildContents, extractText, extractUsage, extractCitations, buildSafetySettings, isRetryableError
+  - Agent: Claude:Opus 4.5
+
+- **Tenant module unit tests**: Full coverage for multi-tenancy configuration
+  - TenantConfig: GetProvider, DefaultProvider with failover ordering
+  - Secrets: loadSecret (ENV/VAR/inline), resolveSecrets, path validation
+  - Loader: validateTenantConfig, loadTenants (JSON/YAML), duplicate detection
+  - Manager: TenantCodes, TenantCount, Tenant, DefaultTenant, Reload
+  - Agent: Claude:Opus 4.5
+
+### Changed
+- **Updated audit reports**: Marked provider and tenant test proposals as completed
+
 ## [0.5.4] - 2026-01-07
 
 ### Changed
