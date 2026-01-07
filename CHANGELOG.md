@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.8] - 2026-01-07
+
+### Security
+- **API key security**: Removed API key override from request body in ChatService
+  - API keys must now come from server-side tenant configuration only
+  - Prevents clients from bypassing tenant-configured providers
+
 ## [0.4.7] - 2026-01-07
 
 ### Security

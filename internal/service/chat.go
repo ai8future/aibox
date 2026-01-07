@@ -437,11 +437,12 @@ func (s *ChatService) buildProviderConfig(ctx context.Context, req *pb.GenerateR
 		}
 	}
 
-	// Then, allow request to override
+	// Then, allow request to override (except API key for security)
 	if pbCfg, ok := req.ProviderConfigs[providerName]; ok {
-		if pbCfg.ApiKey != "" {
-			cfg.APIKey = pbCfg.ApiKey
-		}
+		// SECURITY: API keys must come from server-side tenant config, not requests
+		// if pbCfg.ApiKey != "" {
+		// 	cfg.APIKey = pbCfg.ApiKey
+		// }
 		if pbCfg.Model != "" {
 			cfg.Model = pbCfg.Model
 		}
@@ -501,12 +502,10 @@ func (s *ChatService) selectProviderWithTenant(ctx context.Context, req *pb.Gene
 	}
 
 	// Validate provider is enabled for tenant (if tenant exists)
+	// SECURITY: Removed API key override bypass - providers must be enabled in tenant config
 	if tenantCfg != nil {
 		if _, ok := tenantCfg.GetProvider(providerName); !ok {
-			// Check if request has API key override
-			if pbCfg, ok := req.ProviderConfigs[providerName]; !ok || pbCfg.ApiKey == "" {
-				return nil, fmt.Errorf("provider %s not enabled for tenant", providerName)
-			}
+			return nil, fmt.Errorf("provider %s not enabled for tenant", providerName)
 		}
 	}
 
