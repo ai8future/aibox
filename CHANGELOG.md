@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.8] - 2026-01-08
+
+### Fixed
+- **Apply logging config in main.go**: Logger now uses `cfg.Logging` values (level and format) from configuration
+  - Previously logger was hardcoded to JSON/Info level, ignoring loaded config
+  - Moved config loading before logger setup so config is available
+  - Added `configureLogger()` function to parse level (debug/info/warn/error) and format (text/json)
+  - Agent: Claude:Opus 4.5
+
 ## [0.5.7] - 2026-01-08
 
 ### Fixed

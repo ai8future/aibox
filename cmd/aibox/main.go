@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -40,18 +41,16 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Set up structured logging
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
-	slog.SetDefault(logger)
-
-	// Load configuration
+	// Load configuration first so we can configure logging from it
 	cfg, err := config.Load()
 	if err != nil {
-		slog.Error("failed to load configuration", "error", err)
+		// Use a basic logger for this error since config isn't loaded yet
+		fmt.Fprintf(os.Stderr, "failed to load configuration: %v\n", err)
 		os.Exit(1)
 	}
+
+	// Configure logging based on config
+	configureLogger(cfg.Logging)
 
 	// Log startup info
 	slog.Info("starting AIBox",
@@ -100,6 +99,29 @@ func main() {
 	// Graceful shutdown
 	grpcServer.GracefulStop()
 	slog.Info("server stopped")
+}
+
+// configureLogger sets up the default slog logger based on config values
+func configureLogger(cfg config.LoggingConfig) {
+	level := slog.LevelInfo
+	switch strings.ToLower(cfg.Level) {
+	case "debug":
+		level = slog.LevelDebug
+	case "warn", "warning":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	}
+
+	opts := &slog.HandlerOptions{Level: level}
+	var handler slog.Handler
+	if strings.ToLower(cfg.Format) == "text" {
+		handler = slog.NewTextHandler(os.Stdout, opts)
+	} else {
+		handler = slog.NewJSONHandler(os.Stdout, opts)
+	}
+
+	slog.SetDefault(slog.New(handler))
 }
 
 // runHealthCheck performs a gRPC health check against the AdminService/Health endpoint
