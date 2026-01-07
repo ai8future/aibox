@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.12] - 2026-01-08
+
+### Fixed
+- **Normalize tenant_id to lowercase on config load**: Tenant IDs are now normalized (lowercased and trimmed) immediately after loading from config files
+  - Previously, mixed-case tenant IDs in config files would fail lookup since resolution uses lowercase
+  - Ensures consistent tenant ID matching regardless of case in config files
+  - Agent: Claude:Opus 4.5
+
 ## [0.5.11] - 2026-01-08
 
 ### Fixed
