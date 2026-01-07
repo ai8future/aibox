@@ -204,8 +204,10 @@ func (c *Config) applyEnvOverrides() {
 	}
 
 	// RAG configuration
-	if enabled := os.Getenv("RAG_ENABLED"); enabled == "true" || enabled == "1" {
-		c.RAG.Enabled = true
+	if enabled := os.Getenv("RAG_ENABLED"); enabled != "" {
+		if v, err := strconv.ParseBool(enabled); err == nil {
+			c.RAG.Enabled = v
+		}
 	}
 	if url := os.Getenv("RAG_OLLAMA_URL"); url != "" {
 		c.RAG.OllamaURL = url

@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.3] - 2026-01-07
+
+### Fixed
+- **RAG_ENABLED env can now disable RAG**: Changed env override to use `strconv.ParseBool()` instead of only checking for truthy values
+  - Previously `RAG_ENABLED=false` or `RAG_ENABLED=0` had no effect (only `true`/`1` were recognized)
+  - Now supports all standard boolean strings: `true`, `false`, `1`, `0`, `t`, `f`, `T`, `F`, `TRUE`, `FALSE`, etc.
+  - Agent: Claude:Opus 4.5
+
 ## [0.5.2] - 2026-01-07
 
 ### Fixed
