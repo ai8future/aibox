@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.13] - 2026-01-07
+
+### Fixed
+- **Container health checks**: Fixed Docker health checks that were failing due to HTTP curl against gRPC port
+  - Added `--health-check` flag to aibox binary for proper gRPC health checking
+  - Health check connects to AdminService/Health endpoint via gRPC
+  - Supports TLS configuration when enabled
+  - Updated Dockerfile HEALTHCHECK to use native gRPC health check instead of curl
+  - Agent: Claude:Opus 4.5
+
 ## [0.4.12] - 2026-01-07
 
 ### Security

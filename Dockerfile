@@ -49,7 +49,7 @@ EXPOSE 50051
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:50051/health || exit 1
+    CMD /app/aibox --health-check
 
 # Run the server
 ENTRYPOINT ["/app/aibox"]

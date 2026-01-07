@@ -2,16 +2,21 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log/slog"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	aiboxv1 "github.com/cliffpyles/aibox/gen/go/aibox/v1"
 	"github.com/cliffpyles/aibox/internal/config"
 	"github.com/cliffpyles/aibox/internal/server"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // Build-time variables
@@ -22,6 +27,19 @@ var (
 )
 
 func main() {
+	// Parse command-line flags
+	healthCheck := flag.Bool("health-check", false, "Run gRPC health check and exit")
+	flag.Parse()
+
+	// If health check mode, run the check and exit
+	if *healthCheck {
+		if err := runHealthCheck(); err != nil {
+			fmt.Fprintf(os.Stderr, "health check failed: %v\n", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
 	// Set up structured logging
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
@@ -82,4 +100,57 @@ func main() {
 	// Graceful shutdown
 	grpcServer.GracefulStop()
 	slog.Info("server stopped")
+}
+
+// runHealthCheck performs a gRPC health check against the AdminService/Health endpoint
+func runHealthCheck() error {
+	// Load configuration to get server address and TLS settings
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Build the address, using 127.0.0.1 if host is empty or 0.0.0.0
+	host := cfg.Server.Host
+	if host == "" || host == "0.0.0.0" {
+		host = "127.0.0.1"
+	}
+	addr := fmt.Sprintf("%s:%d", host, cfg.Server.GRPCPort)
+
+	// Create context with 3 second timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// Set up credentials based on TLS configuration
+	var dialOpts []grpc.DialOption
+	if cfg.TLS.Enabled {
+		creds, err := credentials.NewClientTLSFromFile(cfg.TLS.CertFile, "")
+		if err != nil {
+			return fmt.Errorf("failed to create TLS credentials: %w", err)
+		}
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(creds))
+	} else {
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	}
+
+	// Dial the gRPC server
+	conn, err := grpc.DialContext(ctx, addr, dialOpts...)
+	if err != nil {
+		return fmt.Errorf("failed to connect to server: %w", err)
+	}
+	defer conn.Close()
+
+	// Create AdminService client and call Health
+	client := aiboxv1.NewAdminServiceClient(conn)
+	resp, err := client.Health(ctx, &aiboxv1.HealthRequest{})
+	if err != nil {
+		return fmt.Errorf("health check RPC failed: %w", err)
+	}
+
+	// Check if status is healthy
+	if resp.Status != "healthy" {
+		return fmt.Errorf("server unhealthy: status=%s", resp.Status)
+	}
+
+	return nil
 }
