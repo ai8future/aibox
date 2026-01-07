@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.9] - 2026-01-08
+
+### Fixed
+- **Rate limiter negative token check**: Added validation to ignore non-positive token counts in `RecordTokens`
+  - Prevents gaming the rate limiter by passing negative values to decrement counters
+  - Agent: Claude:Opus 4.5
+
 ## [0.5.8] - 2026-01-08
 
 ### Fixed

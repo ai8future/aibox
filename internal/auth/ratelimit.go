@@ -80,6 +80,10 @@ func (r *RateLimiter) RecordTokens(ctx context.Context, clientID string, tokens 
 		return nil
 	}
 
+	if tokens <= 0 {
+		return nil // Ignore non-positive token counts
+	}
+
 	// Apply default TPM limit if client-specific limit is 0
 	if limit == 0 {
 		limit = r.defaultLimits.TokensPerMinute
