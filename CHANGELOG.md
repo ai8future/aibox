@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.11] - 2026-01-07
+
+### Changed
+- **Refactored tenant ID resolution**: Consolidated tenant ID extraction into shared `auth.TenantIDFromContext()` helper
+  - Moved from duplicated implementations in files.go and chat.go to shared auth package
+  - Consistent fallback chain: tenant config -> client ID -> "default"
+  - Added unit test for TenantIDFromContext
+
 ## [0.4.10] - 2026-01-07
 
 ### Added

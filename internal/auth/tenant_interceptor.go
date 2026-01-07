@@ -123,6 +123,18 @@ func TenantFromContext(ctx context.Context) *tenant.TenantConfig {
 	return nil
 }
 
+// TenantIDFromContext extracts tenant ID from context with fallbacks.
+// Tries tenant config first, then client ID, then returns "default".
+func TenantIDFromContext(ctx context.Context) string {
+	if cfg := TenantFromContext(ctx); cfg != nil && cfg.TenantID != "" {
+		return cfg.TenantID
+	}
+	if client := ClientFromContext(ctx); client != nil && client.ClientID != "" {
+		return client.ClientID
+	}
+	return "default"
+}
+
 // tenantStream wraps a ServerStream to handle tenant extraction for streaming.
 type tenantStream struct {
 	grpc.ServerStream

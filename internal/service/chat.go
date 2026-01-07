@@ -521,13 +521,6 @@ func (s *ChatService) selectProviderWithTenant(ctx context.Context, req *pb.Gene
 	}
 }
 
-// getTenantID returns the tenant ID from context or empty string.
-func getTenantID(ctx context.Context) string {
-	if cfg := auth.TenantFromContext(ctx); cfg != nil {
-		return cfg.TenantID
-	}
-	return ""
-}
 
 // retrieveRAGContext retrieves relevant document chunks for non-OpenAI providers.
 // Returns nil if RAG is disabled, not configured, or provider is OpenAI.
@@ -539,14 +532,9 @@ func (s *ChatService) retrieveRAGContext(ctx context.Context, storeID, query str
 		return nil, nil
 	}
 
-	tenantID := getTenantID(ctx)
-	if tenantID == "" {
-		tenantID = "default"
-	}
-
 	return s.ragService.Retrieve(ctx, rag.RetrieveParams{
 		StoreID:  storeID,
-		TenantID: tenantID,
+		TenantID: auth.TenantIDFromContext(ctx),
 		Query:    query,
 		TopK:     5,
 	})

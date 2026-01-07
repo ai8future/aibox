@@ -16,17 +16,6 @@ import (
 // maxUploadBytes is the maximum allowed file upload size (100MB).
 const maxUploadBytes int64 = 100 * 1024 * 1024
 
-// tenantIDFromContext extracts tenant ID from context, with fallback to client ID or "default".
-func tenantIDFromContext(ctx context.Context) string {
-	if cfg := auth.TenantFromContext(ctx); cfg != nil && cfg.TenantID != "" {
-		return cfg.TenantID
-	}
-	if client := auth.ClientFromContext(ctx); client != nil && client.ClientID != "" {
-		return client.ClientID
-	}
-	return "default"
-}
-
 // FileService implements the FileService gRPC service for RAG file management.
 type FileService struct {
 	pb.UnimplementedFileServiceServer
@@ -55,7 +44,7 @@ func (s *FileService) CreateFileStore(ctx context.Context, req *pb.CreateFileSto
 	}
 
 	// Get tenant ID from auth context
-	tenantID := tenantIDFromContext(ctx)
+	tenantID := auth.TenantIDFromContext(ctx)
 
 	// Create the Qdrant collection via RAG service
 	if err := s.ragService.CreateStore(ctx, tenantID, storeID); err != nil {
@@ -145,7 +134,7 @@ func (s *FileService) UploadFile(stream pb.FileService_UploadFileServer) error {
 	}
 
 	// Get tenant ID from auth context
-	tenantID := tenantIDFromContext(ctx)
+	tenantID := auth.TenantIDFromContext(ctx)
 
 	// Ingest the file via RAG service
 	result, err := s.ragService.Ingest(ctx, rag.IngestParams{
@@ -195,7 +184,7 @@ func (s *FileService) DeleteFileStore(ctx context.Context, req *pb.DeleteFileSto
 	}
 
 	// Get tenant ID from auth context
-	tenantID := tenantIDFromContext(ctx)
+	tenantID := auth.TenantIDFromContext(ctx)
 
 	if err := s.ragService.DeleteStore(ctx, tenantID, req.StoreId); err != nil {
 		slog.Error("failed to delete file store",
@@ -228,7 +217,7 @@ func (s *FileService) GetFileStore(ctx context.Context, req *pb.GetFileStoreRequ
 	}
 
 	// Get tenant ID from auth context
-	tenantID := tenantIDFromContext(ctx)
+	tenantID := auth.TenantIDFromContext(ctx)
 
 	info, err := s.ragService.StoreInfo(ctx, tenantID, req.StoreId)
 	if err != nil {

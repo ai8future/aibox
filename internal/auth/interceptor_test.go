@@ -145,6 +145,41 @@ func TestRequirePermission(t *testing.T) {
 	}
 }
 
+func TestTenantIDFromContext(t *testing.T) {
+	tests := []struct {
+		name     string
+		ctx      context.Context
+		expected string
+	}{
+		{
+			name:     "empty context returns default",
+			ctx:      context.Background(),
+			expected: "default",
+		},
+		{
+			name: "client ID fallback",
+			ctx: context.WithValue(context.Background(), ClientContextKey, &ClientKey{
+				ClientID: "client-123",
+			}),
+			expected: "client-123",
+		},
+		{
+			name:     "default when all empty",
+			ctx:      context.Background(),
+			expected: "default",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := TenantIDFromContext(tt.ctx)
+			if result != tt.expected {
+				t.Errorf("TenantIDFromContext() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestClientFromContext(t *testing.T) {
 	t.Run("no client", func(t *testing.T) {
 		ctx := context.Background()
