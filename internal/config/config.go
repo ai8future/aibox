@@ -96,7 +96,13 @@ func Load() (*Config, error) {
 		configPath = "configs/aibox.yaml"
 	}
 
-	if data, err := os.ReadFile(configPath); err == nil {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, fmt.Errorf("failed to read config file: %w", err)
+		}
+		// File doesn't exist - continue with defaults
+	} else {
 		if err := yaml.Unmarshal(data, cfg); err != nil {
 			return nil, fmt.Errorf("failed to parse config file: %w", err)
 		}
@@ -183,6 +189,19 @@ func (c *Config) applyEnvOverrides() {
 		c.Server.Host = host
 	}
 
+	// TLS configuration
+	if enabled := os.Getenv("AIBOX_TLS_ENABLED"); enabled != "" {
+		if v, err := strconv.ParseBool(enabled); err == nil {
+			c.TLS.Enabled = v
+		}
+	}
+	if cert := os.Getenv("AIBOX_TLS_CERT_FILE"); cert != "" {
+		c.TLS.CertFile = cert
+	}
+	if key := os.Getenv("AIBOX_TLS_KEY_FILE"); key != "" {
+		c.TLS.KeyFile = key
+	}
+
 	if addr := os.Getenv("REDIS_ADDR"); addr != "" {
 		c.Redis.Addr = addr
 	}
@@ -191,12 +210,22 @@ func (c *Config) applyEnvOverrides() {
 		c.Redis.Password = pass
 	}
 
+	if db := os.Getenv("REDIS_DB"); db != "" {
+		if d, err := strconv.Atoi(db); err == nil {
+			c.Redis.DB = d
+		}
+	}
+
 	if token := os.Getenv("AIBOX_ADMIN_TOKEN"); token != "" {
 		c.Auth.AdminToken = token
 	}
 
 	if level := os.Getenv("AIBOX_LOG_LEVEL"); level != "" {
 		c.Logging.Level = level
+	}
+
+	if format := os.Getenv("AIBOX_LOG_FORMAT"); format != "" {
+		c.Logging.Format = format
 	}
 
 	if mode := os.Getenv("AIBOX_STARTUP_MODE"); mode != "" {

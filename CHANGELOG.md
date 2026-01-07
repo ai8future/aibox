@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.7] - 2026-01-08
+
+### Fixed
+- **Config TLS/logging env overrides**: Added environment variable support for TLS and logging configuration
+  - `AIBOX_TLS_ENABLED`, `AIBOX_TLS_CERT_FILE`, `AIBOX_TLS_KEY_FILE` for TLS settings
+  - `REDIS_DB` for Redis database selection
+  - `AIBOX_LOG_FORMAT` for log format configuration
+  - Agent: Claude:Opus 4.5
+
+- **Config file read error handling**: Changed to fail on config read errors (permissions, corruption) while allowing missing files
+  - Previously silently ignored all read errors including permission denied
+  - Now properly returns error if file exists but cannot be read
+  - Agent: Claude:Opus 4.5
+
 ## [0.5.6] - 2026-01-08
 
 ### Changed
