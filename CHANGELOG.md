@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.6] - 2026-01-07
+
+### Security
+- **Path traversal protection**: Added validation for FILE= secret paths to prevent arbitrary file reads
+  - Paths must be within allowed directories: `/etc/aibox/secrets`, `/run/secrets`, `/var/run/secrets`
+  - Rejects paths containing `..` traversal sequences
+
 ## [0.4.5] - 2026-01-07
 
 ### Security
