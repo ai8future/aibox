@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.14] - 2026-01-08
+
+### Added
+- **Config loader unit tests**: Added comprehensive test coverage for `internal/config/config.go`
+  - Tests for default values when no config file provided
+  - Tests for environment variable overrides (TLS, Redis DB, log format, RAG, etc.)
+  - Tests for config file read error handling (missing file uses defaults, read errors fail)
+  - Tests for YAML parsing errors and validation failures
+  - Tests for env var expansion in string fields
+  - Agent: Claude:Opus 4.5
+
 ## [0.5.13] - 2026-01-08
 
 ### Fixed
