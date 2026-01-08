@@ -2,6 +2,47 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.3] - 2026-01-08
+
+### Security
+- **SSRF Prevention**: Added comprehensive URL validation for provider base URLs
+  - Block dangerous protocols (file://, gopher://, javascript:, data://)
+  - Block private/internal IP ranges (10.x, 172.16.x, 192.168.x)
+  - Block cloud metadata endpoints (169.254.169.254)
+  - Enforce HTTPS for external URLs (HTTP only for localhost)
+  - Validation at both service layer and provider client layer
+- **Development Mode Hardening**: Removed PermissionAdmin from development auth interceptors
+  - Prevents accidental admin access if dev mode enabled in production
+  - Added security warnings when development mode is active
+- **Secret Path Validation**: Added symlink resolution to prevent path traversal
+  - Uses filepath.EvalSymlinks() to resolve symlinks before validation
+  - Prevents attacks via symlinks inside allowed directories
+- **Error Logging**: Redact provider error details before logging
+  - Prevents sensitive information leakage to external logging systems
+
+### Fixed
+- **Rate Limiter**: Handle unexpected Redis result types safely
+  - Add type coercion for string results from Lua script
+  - Log warnings for malformed values instead of silent failure
+  - Treat unparseable values as 0 to avoid blocking requests
+- **RAG Service**: Handle nil payloads in Qdrant results
+  - Add nil checks to getString/getInt helpers
+  - Fix chunk positions to match trimmed text after whitespace removal
+- **File Upload**: Add 5-minute timeout to upload streams
+  - Prevents malicious clients from holding server resources
+  - Returns DeadlineExceeded on timeout
+- **Provider Clients**: Enforce 3-minute request timeout on all API calls
+  - Applied to GenerateReply and GenerateReplyStream in all providers
+- **FileService**: Use proper gRPC status codes
+  - Return codes.NotFound for missing stores
+  - Return codes.Unimplemented for ListFileStores
+
+### Added
+- `internal/validation/url.go`: URL validation utilities for SSRF prevention
+- Miniredis dependency for Redis unit testing
+
+Agent: Claude:Opus 4.5
+
 ## [0.6.2] - 2026-01-08
 
 ### Added
