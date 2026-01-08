@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2026-01-08
+
+### Added
+- **Tenant interceptor unit tests**: Added comprehensive test coverage for `internal/auth/tenant_interceptor.go`
+  - Tests for tenant ID extraction from GenerateReplyRequest and SelectProviderRequest
+  - Tests for skip methods (Health, Ready, Version, FileService methods)
+  - Tests for unary and stream interceptors
+  - Tests for single-tenant mode (default tenant) vs multi-tenant mode
+  - Tests for tenant resolution errors (missing tenant_id, tenant not found)
+  - Tests for tenant ID normalization (lowercase, whitespace trimmed)
+  - Tests for TenantFromContext and tenantStream context handling
+  - Agent: Claude:Opus 4.5
+
 ## [0.5.14] - 2026-01-08
 
 ### Added
