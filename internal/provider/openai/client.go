@@ -64,6 +64,13 @@ func (c *Client) SupportsStreaming() bool {
 
 // GenerateReply implements provider.Provider using OpenAI's Responses API.
 func (c *Client) GenerateReply(ctx context.Context, params provider.GenerateParams) (provider.GenerateResult, error) {
+	// Ensure request has a timeout
+	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, requestTimeout)
+		defer cancel()
+	}
+
 	cfg := params.Config
 
 	if strings.TrimSpace(cfg.APIKey) == "" {
@@ -230,10 +237,19 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 
 // GenerateReplyStream implements streaming responses.
 func (c *Client) GenerateReplyStream(ctx context.Context, params provider.GenerateParams) (<-chan provider.StreamChunk, error) {
+	// Ensure request has a timeout
+	var cancel context.CancelFunc
+	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
+		ctx, cancel = context.WithTimeout(ctx, requestTimeout)
+	}
+
 	// For now, fall back to non-streaming and send result as single chunk
 	ch := make(chan provider.StreamChunk, 1)
 	go func() {
 		defer close(ch)
+		if cancel != nil {
+			defer cancel()
+		}
 		result, err := c.GenerateReply(ctx, params)
 		if err != nil {
 			ch <- provider.StreamChunk{

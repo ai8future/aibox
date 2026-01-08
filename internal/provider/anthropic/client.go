@@ -58,6 +58,13 @@ func (c *Client) SupportsStreaming() bool {
 
 // GenerateReply implements provider.Provider using Anthropic's Messages API.
 func (c *Client) GenerateReply(ctx context.Context, params provider.GenerateParams) (provider.GenerateResult, error) {
+	// Ensure request has a timeout
+	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, requestTimeout)
+		defer cancel()
+	}
+
 	cfg := params.Config
 
 	if strings.TrimSpace(cfg.APIKey) == "" {
@@ -184,6 +191,12 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 
 // GenerateReplyStream implements streaming responses.
 func (c *Client) GenerateReplyStream(ctx context.Context, params provider.GenerateParams) (<-chan provider.StreamChunk, error) {
+	// Ensure request has a timeout
+	var cancel context.CancelFunc
+	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
+		ctx, cancel = context.WithTimeout(ctx, requestTimeout)
+	}
+
 	cfg := params.Config
 
 	if strings.TrimSpace(cfg.APIKey) == "" {
@@ -242,6 +255,9 @@ func (c *Client) GenerateReplyStream(ctx context.Context, params provider.Genera
 
 	go func() {
 		defer close(ch)
+		if cancel != nil {
+			defer cancel()
+		}
 
 		stream := client.Messages.NewStreaming(ctx, reqParams)
 		message := anthropic.Message{}
