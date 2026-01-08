@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.2] - 2026-01-08
+
+### Added
+- **Chat service helper unit tests**: Added comprehensive test coverage for `internal/service/chat.go`
+  - Tests for `hasCustomBaseURL()`: checks for custom base_url in provider configs
+  - Tests for `formatRAGContext()`: formats RAG chunks into instruction text
+  - Tests for `ragChunksToCitations()`: converts RAG chunks to citation objects with truncation
+  - Tests for `prepareRequest()`: validates inputs, selects provider, builds params
+    - Input validation: empty/whitespace user input, oversized inputs, invalid request IDs
+    - Provider selection: explicit provider, default provider, tenant failover order
+    - Security: custom base_url requires admin permission
+    - RAG integration: context injection for non-OpenAI, skipped for OpenAI (native support)
+  - Tests for `buildProviderConfig()`: merges tenant config with request overrides
+  - Tests for `selectProviderWithTenant()`: tenant-aware provider selection
+  - Tests for `getFallbackProvider()`: default and specified fallback providers
+  - Tests for `convertHistory()` and `mapProviderToProto()` helpers
+  - Agent: Claude:Opus 4.5
+
 ## [0.6.1] - 2026-01-08
 
 ### Added
