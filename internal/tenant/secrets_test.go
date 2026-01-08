@@ -139,3 +139,79 @@ func TestLoadSecret_FilePrefix_PathValidation(t *testing.T) {
 		t.Error("expected error for file outside allowed directories")
 	}
 }
+
+func TestValidateSecretPath_SymlinkAttack(t *testing.T) {
+	// This test verifies that symlinks inside an "allowed" directory
+	// pointing to files outside are properly rejected.
+	//
+	// Attack scenario: If /etc/aibox/secrets exists, an attacker could
+	// create /etc/aibox/secrets/evil -> /etc/passwd, bypassing validation
+	// that only checks the path prefix without resolving symlinks.
+
+	// Create a temp structure simulating the attack
+	tmpDir := t.TempDir()
+	allowedDir := filepath.Join(tmpDir, "allowed")
+	outsideDir := filepath.Join(tmpDir, "outside")
+	outsideFile := filepath.Join(outsideDir, "secret.txt")
+
+	if err := os.MkdirAll(allowedDir, 0o755); err != nil {
+		t.Fatalf("create allowed dir: %v", err)
+	}
+	if err := os.MkdirAll(outsideDir, 0o755); err != nil {
+		t.Fatalf("create outside dir: %v", err)
+	}
+	if err := os.WriteFile(outsideFile, []byte("sensitive-data"), 0o600); err != nil {
+		t.Fatalf("write outside file: %v", err)
+	}
+
+	// Create symlink inside "allowed" pointing to outside file
+	symlinkPath := filepath.Join(allowedDir, "evil-link")
+	if err := os.Symlink(outsideFile, symlinkPath); err != nil {
+		t.Fatalf("create symlink: %v", err)
+	}
+
+	// Temporarily override AllowedSecretDirs for this test
+	originalDirs := AllowedSecretDirs
+	AllowedSecretDirs = []string{allowedDir}
+	defer func() { AllowedSecretDirs = originalDirs }()
+
+	// The symlink path appears to be inside allowedDir, but resolves outside
+	// validateSecretPath should reject this
+	err := validateSecretPath(symlinkPath)
+	if err == nil {
+		t.Error("expected error for symlink pointing outside allowed directories")
+	}
+}
+
+func TestValidateSecretPath_SymlinkToAllowed(t *testing.T) {
+	// Verify that symlinks within allowed directories to other locations
+	// within allowed directories still work correctly.
+	tmpDir := t.TempDir()
+	allowedDir := filepath.Join(tmpDir, "allowed")
+	subDir := filepath.Join(allowedDir, "subdir")
+	realFile := filepath.Join(subDir, "real.txt")
+
+	if err := os.MkdirAll(subDir, 0o755); err != nil {
+		t.Fatalf("create subdir: %v", err)
+	}
+	if err := os.WriteFile(realFile, []byte("allowed-data"), 0o600); err != nil {
+		t.Fatalf("write real file: %v", err)
+	}
+
+	// Create symlink inside allowed pointing to another location inside allowed
+	symlinkPath := filepath.Join(allowedDir, "good-link")
+	if err := os.Symlink(realFile, symlinkPath); err != nil {
+		t.Fatalf("create symlink: %v", err)
+	}
+
+	// Temporarily override AllowedSecretDirs for this test
+	originalDirs := AllowedSecretDirs
+	AllowedSecretDirs = []string{allowedDir}
+	defer func() { AllowedSecretDirs = originalDirs }()
+
+	// This symlink should be allowed since it resolves within allowed dir
+	err := validateSecretPath(symlinkPath)
+	if err != nil {
+		t.Errorf("expected symlink within allowed dir to pass: %v", err)
+	}
+}

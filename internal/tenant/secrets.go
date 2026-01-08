@@ -16,7 +16,8 @@ var AllowedSecretDirs = []string{
 }
 
 // validateSecretPath validates that the path is within allowed directories
-// and doesn't contain path traversal sequences.
+// and doesn't contain path traversal sequences. It resolves symlinks to prevent
+// attacks using symlinks inside allowed directories pointing outside.
 func validateSecretPath(path string) error {
 	// Check for path traversal sequences
 	if strings.Contains(path, "..") {
@@ -29,14 +30,30 @@ func validateSecretPath(path string) error {
 		return fmt.Errorf("invalid path: %w", err)
 	}
 
-	// Check if path is within allowed directories
+	// Resolve symlinks to get the real path
+	realPath, err := filepath.EvalSymlinks(absPath)
+	if err != nil {
+		// If file doesn't exist yet, resolve parent directory
+		parentDir := filepath.Dir(absPath)
+		realParent, parentErr := filepath.EvalSymlinks(parentDir)
+		if parentErr != nil {
+			return fmt.Errorf("cannot resolve path: %w", err)
+		}
+		realPath = filepath.Join(realParent, filepath.Base(absPath))
+	}
+
+	// Check against allowed directories using the real path
 	for _, allowed := range AllowedSecretDirs {
-		if strings.HasPrefix(absPath, allowed+string(filepath.Separator)) || absPath == allowed {
+		allowedReal, err := filepath.EvalSymlinks(allowed)
+		if err != nil {
+			continue // Skip unresolvable allowed dirs
+		}
+		if strings.HasPrefix(realPath, allowedReal+string(filepath.Separator)) || realPath == allowedReal {
 			return nil
 		}
 	}
 
-	return fmt.Errorf("path %s not in allowed directories", absPath)
+	return fmt.Errorf("path %s not in allowed directories", realPath)
 }
 
 // resolveSecrets loads API keys from ENV=, FILE=, or inline values.
