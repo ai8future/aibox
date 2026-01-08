@@ -13,6 +13,7 @@ import (
 	"github.com/anthropics/anthropic-sdk-go/option"
 
 	"github.com/cliffpyles/aibox/internal/provider"
+	"github.com/cliffpyles/aibox/internal/validation"
 )
 
 const (
@@ -76,6 +77,10 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 		option.WithAPIKey(cfg.APIKey),
 	}
 	if cfg.BaseURL != "" {
+		// SECURITY: Validate base URL to prevent SSRF attacks
+		if err := validation.ValidateProviderURL(cfg.BaseURL); err != nil {
+			return provider.GenerateResult{}, fmt.Errorf("invalid base URL: %w", err)
+		}
 		opts = append(opts, option.WithBaseURL(cfg.BaseURL))
 	}
 	client := anthropic.NewClient(opts...)
@@ -198,6 +203,10 @@ func (c *Client) GenerateReplyStream(ctx context.Context, params provider.Genera
 		option.WithAPIKey(cfg.APIKey),
 	}
 	if cfg.BaseURL != "" {
+		// SECURITY: Validate base URL to prevent SSRF attacks
+		if err := validation.ValidateProviderURL(cfg.BaseURL); err != nil {
+			return nil, fmt.Errorf("invalid base URL: %w", err)
+		}
 		opts = append(opts, option.WithBaseURL(cfg.BaseURL))
 	}
 	client := anthropic.NewClient(opts...)

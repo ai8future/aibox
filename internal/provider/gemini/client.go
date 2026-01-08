@@ -12,6 +12,7 @@ import (
 	"google.golang.org/genai"
 
 	"github.com/cliffpyles/aibox/internal/provider"
+	"github.com/cliffpyles/aibox/internal/validation"
 )
 
 const (
@@ -77,6 +78,10 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 		Backend: genai.BackendGeminiAPI,
 	}
 	if cfg.BaseURL != "" {
+		// SECURITY: Validate base URL to prevent SSRF attacks
+		if err := validation.ValidateProviderURL(cfg.BaseURL); err != nil {
+			return provider.GenerateResult{}, fmt.Errorf("invalid base URL: %w", err)
+		}
 		clientConfig.HTTPOptions = genai.HTTPOptions{
 			BaseURL: cfg.BaseURL,
 		}

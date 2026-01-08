@@ -61,6 +61,10 @@ func (s *ChatService) prepareRequest(ctx context.Context, req *pb.GenerateReplyR
 		if err := auth.RequirePermission(ctx, auth.PermissionAdmin); err != nil {
 			return nil, status.Error(codes.PermissionDenied, "custom base_url requires admin permission")
 		}
+		// SECURITY: Validate all custom base URLs to prevent SSRF
+		if err := validateCustomBaseURLs(req); err != nil {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
 	}
 
 	// Validate input sizes
@@ -152,6 +156,19 @@ func hasCustomBaseURL(req *pb.GenerateReplyRequest) bool {
 		}
 	}
 	return false
+}
+
+// validateCustomBaseURLs validates all custom base URLs in the request to prevent SSRF attacks.
+// This should be called after the admin permission check to ensure URLs are safe.
+func validateCustomBaseURLs(req *pb.GenerateReplyRequest) error {
+	for providerName, cfg := range req.ProviderConfigs {
+		if cfg != nil && strings.TrimSpace(cfg.GetBaseUrl()) != "" {
+			if err := validation.ValidateProviderURL(cfg.GetBaseUrl()); err != nil {
+				return fmt.Errorf("invalid base_url for provider %s: %w", providerName, err)
+			}
+		}
+	}
+	return nil
 }
 
 // GenerateReply generates a completion.

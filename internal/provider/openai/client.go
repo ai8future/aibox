@@ -16,6 +16,7 @@ import (
 	"github.com/openai/openai-go/shared/constant"
 
 	"github.com/cliffpyles/aibox/internal/provider"
+	"github.com/cliffpyles/aibox/internal/validation"
 )
 
 const (
@@ -79,6 +80,10 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 
 	client := openai.NewClient(option.WithAPIKey(cfg.APIKey))
 	if cfg.BaseURL != "" {
+		// SECURITY: Validate base URL to prevent SSRF attacks
+		if err := validation.ValidateProviderURL(cfg.BaseURL); err != nil {
+			return provider.GenerateResult{}, fmt.Errorf("invalid base URL: %w", err)
+		}
 		client = openai.NewClient(
 			option.WithAPIKey(cfg.APIKey),
 			option.WithBaseURL(cfg.BaseURL),
