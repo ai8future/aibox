@@ -79,6 +79,15 @@ func (a *AdminAuth) SetPassword(password string) error {
 		return errors.New("password must be at least 8 characters")
 	}
 
+	// Hold lock for entire operation to prevent race conditions
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	// Double-check we still need setup while holding lock
+	if a.credentials != nil {
+		return errors.New("password already set")
+	}
+
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
@@ -105,10 +114,7 @@ func (a *AdminAuth) SetPassword(password string) error {
 		return err
 	}
 
-	a.mu.Lock()
 	a.credentials = &creds
-	a.mu.Unlock()
-
 	return nil
 }
 

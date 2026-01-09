@@ -131,10 +131,18 @@ func (s *Server) serveFrontend() {
 
 // ServeHTTP implements http.Handler
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Add CORS headers for development
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	// Add CORS headers - restrict to same-origin in production
+	// For local development, allow localhost origins
+	origin := r.Header.Get("Origin")
+	if origin != "" {
+		// Only allow localhost origins for development
+		if isLocalhostOrigin(origin) {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		}
+	}
 
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusOK)
@@ -142,6 +150,15 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.mux.ServeHTTP(w, r)
+}
+
+// isLocalhostOrigin checks if origin is a localhost URL
+func isLocalhostOrigin(origin string) bool {
+	// Allow localhost and 127.0.0.1 for development
+	return strings.HasPrefix(origin, "http://localhost:") ||
+		strings.HasPrefix(origin, "http://127.0.0.1:") ||
+		origin == "http://localhost" ||
+		origin == "http://127.0.0.1"
 }
 
 // withAuth is middleware that requires authentication
@@ -175,7 +192,9 @@ func (s *Server) extractToken(r *http.Request) string {
 func (s *Server) jsonResponse(w http.ResponseWriter, data interface{}, status int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		slog.Error("failed to encode JSON response", "error", err)
+	}
 }
 
 func (s *Server) jsonError(w http.ResponseWriter, message string, status int) {
@@ -218,7 +237,7 @@ func (s *Server) handleAuthSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.setAuthCookie(w, token)
+	s.setAuthCookie(w, r, token)
 	s.jsonResponse(w, map[string]string{"token": token}, http.StatusOK)
 }
 
@@ -241,7 +260,7 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.setAuthCookie(w, token)
+	s.setAuthCookie(w, r, token)
 	s.jsonResponse(w, map[string]string{"token": token}, http.StatusOK)
 }
 
@@ -263,15 +282,20 @@ func (s *Server) handleAuthLogout(w http.ResponseWriter, r *http.Request) {
 	s.jsonResponse(w, map[string]bool{"success": true}, http.StatusOK)
 }
 
-func (s *Server) setAuthCookie(w http.ResponseWriter, token string) {
-	http.SetCookie(w, &http.Cookie{
+func (s *Server) setAuthCookie(w http.ResponseWriter, r *http.Request, token string) {
+	cookie := &http.Cookie{
 		Name:     "admin_token",
 		Value:    token,
 		Path:     "/",
 		MaxAge:   86400, // 24 hours
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-	})
+	}
+	// Set Secure flag if request came over HTTPS
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		cookie.Secure = true
+	}
+	http.SetCookie(w, cookie)
 }
 
 // Info handlers

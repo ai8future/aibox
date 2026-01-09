@@ -1,7 +1,6 @@
 package admin
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -328,7 +327,3 @@ func getProviderModels(provider string) []string {
 	}
 }
 
-// Helper to get context with timeout
-func contextWithTimeout(parent context.Context) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(parent, 10*time.Second)
-}
