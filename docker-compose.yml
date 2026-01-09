@@ -1,8 +1,7 @@
 # AIBox Docker Compose
-# Includes: AIBox server, Redis, Qdrant (vector DB), Ollama (embeddings)
+# Simple deployment with static token authentication (no Redis)
 
 services:
-  # AIBox gRPC server
   aibox:
     build:
       context: .
@@ -10,28 +9,14 @@ services:
     ports:
       - "50051:50051"
     environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - AIBOX_ADMIN_TOKEN=${AIBOX_ADMIN_TOKEN:-}
+      - AIBOX_AUTH_MODE=static
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      # RAG configuration
-      - RAG_ENABLED=true
-      - RAG_OLLAMA_URL=http://ollama:11434
-      - RAG_QDRANT_URL=http://qdrant:6333
-      - RAG_DOCBOX_URL=${RAG_DOCBOX_URL:-http://host.docker.internal:41273}
-      - RAG_EMBEDDING_MODEL=nomic-embed-text
+      - RAG_ENABLED=false
     volumes:
       - ./configs:/app/configs:ro
-    depends_on:
-      redis:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      ollama:
-        condition: service_started
-    networks:
-      - aibox-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "/app/aibox", "--health-check"]
@@ -39,64 +24,3 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-
-  # Redis for rate limiting, API keys, thread state
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    command: >
-      redis-server
-      --appendonly yes
-      --maxmemory 256mb
-      --maxmemory-policy allkeys-lru
-    volumes:
-      - redis-data:/data
-    networks:
-      - aibox-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-  # Qdrant vector database for RAG
-  qdrant:
-    image: qdrant/qdrant:latest
-    ports:
-      - "6333:6333"  # REST API
-      - "6334:6334"  # gRPC API
-    volumes:
-      - qdrant-data:/qdrant/storage
-    environment:
-      - QDRANT__SERVICE__GRPC_PORT=6334
-    networks:
-      - aibox-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-  # Ollama for local embeddings
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama-data:/root/.ollama
-    networks:
-      - aibox-network
-    restart: unless-stopped
-    # Note: Run `docker exec aibox-ollama-1 ollama pull nomic-embed-text` after first start
-
-volumes:
-  redis-data:
-  qdrant-data:
-  ollama-data:
-
-networks:
-  aibox-network:
-    driver: bridge

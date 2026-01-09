@@ -9,13 +9,15 @@ import (
 	"google.golang.org/grpc"
 )
 
-func TestNewGRPCServer_FailsWithoutRedisInProductionMode(t *testing.T) {
+func TestNewGRPCServer_FailsWithoutRedisInRedisAuthMode(t *testing.T) {
 	cfg := &config.Config{
 		Server: config.ServerConfig{
 			GRPCPort: 50051,
 			Host:     "127.0.0.1",
 		},
-		StartupMode: config.StartupModeProduction,
+		Auth: config.AuthConfig{
+			AuthMode: "redis", // Redis auth mode requires Redis
+		},
 		Redis: config.RedisConfig{
 			Addr: "invalid:6379", // Will fail to connect
 		},
@@ -23,30 +25,48 @@ func TestNewGRPCServer_FailsWithoutRedisInProductionMode(t *testing.T) {
 
 	_, _, err := NewGRPCServer(cfg, VersionInfo{Version: "test"})
 	if err == nil {
-		t.Fatal("expected error when Redis unavailable in production mode")
+		t.Fatal("expected error when Redis unavailable in redis auth mode")
 	}
 }
 
-func TestNewGRPCServer_AllowsNoRedisInDevelopmentMode(t *testing.T) {
+func TestNewGRPCServer_WorksWithStaticAuthMode(t *testing.T) {
 	cfg := &config.Config{
 		Server: config.ServerConfig{
 			GRPCPort: 50051,
 			Host:     "127.0.0.1",
 		},
-		StartupMode: config.StartupModeDevelopment,
-		Redis: config.RedisConfig{
-			Addr: "invalid:6379", // Will fail to connect
+		Auth: config.AuthConfig{
+			AuthMode:   "static",
+			AdminToken: "test-token-12345",
 		},
 	}
 
 	server, _, err := NewGRPCServer(cfg, VersionInfo{Version: "test"})
 	if err != nil {
-		t.Fatalf("development mode should allow missing Redis: %v", err)
+		t.Fatalf("static auth mode should not require Redis: %v", err)
 	}
 	if server == nil {
 		t.Fatal("server should not be nil")
 	}
 	server.Stop()
+}
+
+func TestNewGRPCServer_FailsWithoutTokenInStaticAuthMode(t *testing.T) {
+	cfg := &config.Config{
+		Server: config.ServerConfig{
+			GRPCPort: 50051,
+			Host:     "127.0.0.1",
+		},
+		Auth: config.AuthConfig{
+			AuthMode:   "static",
+			AdminToken: "", // No token
+		},
+	}
+
+	_, _, err := NewGRPCServer(cfg, VersionInfo{Version: "test"})
+	if err == nil {
+		t.Fatal("expected error when AdminToken missing in static auth mode")
+	}
 }
 
 func TestDevelopmentAuthInterceptor_NoAdminPermission(t *testing.T) {

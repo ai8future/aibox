@@ -59,6 +59,7 @@ type RedisConfig struct {
 // AuthConfig holds authentication settings
 type AuthConfig struct {
 	AdminToken string `yaml:"admin_token"`
+	AuthMode   string `yaml:"auth_mode"` // "static" (default) or "redis"
 }
 
 // RateLimitConfig holds default rate limits
@@ -136,6 +137,9 @@ func defaultConfig() *Config {
 		Redis: RedisConfig{
 			Addr: "localhost:6379",
 			DB:   0,
+		},
+		Auth: AuthConfig{
+			AuthMode: "static",
 		},
 		RateLimits: RateLimitConfig{
 			DefaultRPM: 60,
@@ -225,6 +229,10 @@ func (c *Config) applyEnvOverrides() {
 
 	if token := os.Getenv("AIBOX_ADMIN_TOKEN"); token != "" {
 		c.Auth.AdminToken = token
+	}
+
+	if mode := os.Getenv("AIBOX_AUTH_MODE"); mode != "" {
+		c.Auth.AuthMode = mode
 	}
 
 	if level := os.Getenv("AIBOX_LOG_LEVEL"); level != "" {

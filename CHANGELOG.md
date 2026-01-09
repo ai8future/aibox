@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.5] - 2026-01-09
+
+### Added
+- **Static Auth Mode**: New authentication mode that uses a static admin token
+  - No Redis dependency required for authentication
+  - Enables fully stateless deployment (3 servers behind LB)
+  - Set `AIBOX_AUTH_MODE=static` and `AIBOX_ADMIN_TOKEN` to enable
+  - Defaults to static mode for simpler deployment
+- `internal/auth/static.go`: StaticAuthenticator with constant-time token comparison
+- `AuthConfig.AuthMode` config field: Choose between "static" (default) or "redis"
+
+### Changed
+- `docker-compose.yml`: Simplified to single aibox service (no Redis/Qdrant/Ollama)
+- Redis is now optional - only required when `AIBOX_AUTH_MODE=redis`
+- Rate limiting disabled in static auth mode (rateLimiter is nil)
+- AdminService Ready endpoint only includes Redis in dependencies when configured
+
+### Removed
+- Redis, Qdrant, and Ollama services from default docker-compose.yml
+- Dependency volumes for external services
+
+Agent: Claude:Opus 4.5
+
 ## [0.6.4] - 2026-01-09
 
 ### Added

@@ -61,9 +61,9 @@ func (s *AdminService) Ready(ctx context.Context, req *pb.ReadyRequest) (*pb.Rea
 
 	dependencies := make(map[string]*pb.DependencyStatus)
 
-	// Check Redis
-	redisStatus := &pb.DependencyStatus{Healthy: true}
+	// Check Redis (only if configured - not used in static auth mode)
 	if s.redis != nil {
+		redisStatus := &pb.DependencyStatus{Healthy: true}
 		start := time.Now()
 		if err := s.redis.Ping(ctx); err != nil {
 			redisStatus.Healthy = false
@@ -71,11 +71,9 @@ func (s *AdminService) Ready(ctx context.Context, req *pb.ReadyRequest) (*pb.Rea
 		} else {
 			redisStatus.LatencyMs = time.Since(start).Milliseconds()
 		}
-	} else {
-		redisStatus.Healthy = false
-		redisStatus.Message = "not configured"
+		dependencies["redis"] = redisStatus
 	}
-	dependencies["redis"] = redisStatus
+	// If redis is nil (static auth mode), don't include it in dependencies
 
 	// Determine overall readiness
 	ready := true

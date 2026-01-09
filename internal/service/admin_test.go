@@ -140,22 +140,17 @@ func TestAdminService_Ready_WithAdminPermission(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Ready failed: %v", err)
 	}
-	// Without Redis configured, ready should be false
-	if resp.Ready {
-		t.Error("expected Ready=false without Redis")
+	// With nil Redis (static auth mode), Redis is not in dependencies
+	// so the service should be Ready=true (no failing deps)
+	if !resp.Ready {
+		t.Error("expected Ready=true when Redis not configured (static auth mode)")
 	}
 	if resp.Dependencies == nil {
 		t.Fatal("expected Dependencies to be set")
 	}
-	redisStatus, ok := resp.Dependencies["redis"]
-	if !ok {
-		t.Fatal("expected redis dependency status")
-	}
-	if redisStatus.Healthy {
-		t.Error("expected redis Healthy=false when not configured")
-	}
-	if redisStatus.Message != "not configured" {
-		t.Errorf("expected message='not configured', got %s", redisStatus.Message)
+	// Redis should NOT be in dependencies when nil (static auth mode)
+	if _, ok := resp.Dependencies["redis"]; ok {
+		t.Error("expected no redis in dependencies when not configured (static auth mode)")
 	}
 }
 
@@ -270,30 +265,30 @@ func (m *mockPingableRedis) Ping(ctx context.Context) error {
 	return m.pingErr
 }
 
-func TestAdminService_Ready_WithRedisHealthy(t *testing.T) {
+func TestAdminService_Ready_StaticAuthModeNoRedis(t *testing.T) {
 	cfg := AdminServiceConfig{Version: "1.0.0"}
 
-	// Create a service and inject a mock redis that doesn't error
+	// Create a service without Redis (static auth mode)
 	svc := &AdminService{
 		version:   cfg.Version,
 		startTime: time.Now(),
+		// redis is nil - static auth mode
 	}
 
-	// Since we can't easily mock the redis client without interfaces,
-	// we test the nil redis case and the actual behavior
 	resp, err := svc.Ready(ctxWithAdminPermission("test-client"), &pb.ReadyRequest{})
 
 	if err != nil {
 		t.Fatalf("Ready failed: %v", err)
 	}
 
-	// With nil redis, we should get unhealthy status
-	if resp.Ready {
-		t.Error("expected Ready=false with nil redis")
+	// With nil redis (static auth mode), Redis is not in dependencies
+	// so the service should be Ready=true
+	if !resp.Ready {
+		t.Error("expected Ready=true in static auth mode (no Redis)")
 	}
-	redisStatus := resp.Dependencies["redis"]
-	if redisStatus.Healthy {
-		t.Error("expected redis to be unhealthy when not configured")
+	// Redis should NOT be in dependencies when nil
+	if _, ok := resp.Dependencies["redis"]; ok {
+		t.Error("expected no redis in dependencies in static auth mode")
 	}
 }
 
@@ -423,7 +418,7 @@ func TestAdminService_Health_AlwaysReturnsHealthy(t *testing.T) {
 
 func TestAdminService_Ready_DependencyMapInitialized(t *testing.T) {
 	cfg := AdminServiceConfig{Version: "1.0.0"}
-	svc := NewAdminService(nil, cfg)
+	svc := NewAdminService(nil, cfg) // nil Redis = static auth mode
 
 	resp, err := svc.Ready(ctxWithAdminPermission("test-client"), &pb.ReadyRequest{})
 
@@ -433,9 +428,9 @@ func TestAdminService_Ready_DependencyMapInitialized(t *testing.T) {
 	if resp.Dependencies == nil {
 		t.Fatal("Dependencies map should be initialized")
 	}
-	// Should always have redis dependency
-	if _, ok := resp.Dependencies["redis"]; !ok {
-		t.Error("Dependencies should include redis")
+	// In static auth mode (nil Redis), Redis should NOT be in dependencies
+	if _, ok := resp.Dependencies["redis"]; ok {
+		t.Error("Dependencies should NOT include redis when Redis client is nil")
 	}
 }
 

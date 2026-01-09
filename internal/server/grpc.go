@@ -55,31 +55,35 @@ func NewGRPCServer(cfg *config.Config, version VersionInfo) (*grpc.Server, *Serv
 		)
 	}
 
-	// Initialize Redis (optional - graceful degradation if not available)
+	// Initialize auth based on mode
 	var redisClient *redis.Client
 	var keyStore *auth.KeyStore
 	var rateLimiter *auth.RateLimiter
-	var authenticator *auth.Authenticator
 	var tenantInterceptor *auth.TenantInterceptor
 
-	redisClient, err = redis.NewClient(redis.Config{
-		Addr:     cfg.Redis.Addr,
-		Password: cfg.Redis.Password,
-		DB:       cfg.Redis.DB,
-	})
-	if err != nil {
-		if cfg.StartupMode.IsProduction() {
-			return nil, nil, fmt.Errorf("redis required in production mode: %w", err)
+	if cfg.Auth.AuthMode == "redis" {
+		// Redis-based auth (existing behavior)
+		redisClient, err = redis.NewClient(redis.Config{
+			Addr:     cfg.Redis.Addr,
+			Password: cfg.Redis.Password,
+			DB:       cfg.Redis.DB,
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("redis required for auth_mode=redis: %w", err)
 		}
-		slog.Warn("Redis not available - auth and rate limiting disabled (development mode)", "error", err)
-	} else {
 		keyStore = auth.NewKeyStore(redisClient)
 		rateLimiter = auth.NewRateLimiter(redisClient, auth.RateLimits{
 			RequestsPerMinute: cfg.RateLimits.DefaultRPM,
 			RequestsPerDay:    cfg.RateLimits.DefaultRPD,
 			TokensPerMinute:   cfg.RateLimits.DefaultTPM,
 		}, true)
-		authenticator = auth.NewAuthenticator(keyStore, rateLimiter)
+		slog.Info("using Redis-based authentication")
+	} else {
+		// Static token auth (default)
+		if cfg.Auth.AdminToken == "" {
+			return nil, nil, fmt.Errorf("AIBOX_ADMIN_TOKEN required for static auth mode")
+		}
+		slog.Info("using static token authentication (no Redis)")
 	}
 
 	// Create tenant interceptor if tenant manager is available
@@ -103,14 +107,16 @@ func NewGRPCServer(cfg *config.Config, version VersionInfo) (*grpc.Server, *Serv
 		streamInterceptors = append(streamInterceptors, tenantInterceptor.StreamInterceptor())
 	}
 
-	// Add auth interceptors if Redis is available
-	if authenticator != nil {
+	// Add auth interceptors based on mode
+	if cfg.Auth.AuthMode == "redis" && keyStore != nil {
+		authenticator := auth.NewAuthenticator(keyStore, rateLimiter)
 		unaryInterceptors = append(unaryInterceptors, authenticator.UnaryInterceptor())
 		streamInterceptors = append(streamInterceptors, authenticator.StreamInterceptor())
-	} else if !cfg.StartupMode.IsProduction() {
-		// Inject a dev client when auth is disabled in development mode
-		unaryInterceptors = append(unaryInterceptors, developmentAuthInterceptor())
-		streamInterceptors = append(streamInterceptors, developmentAuthStreamInterceptor())
+	} else if cfg.Auth.AuthMode != "redis" {
+		// Static token auth
+		staticAuth := auth.NewStaticAuthenticator(cfg.Auth.AdminToken)
+		unaryInterceptors = append(unaryInterceptors, staticAuth.UnaryInterceptor())
+		streamInterceptors = append(streamInterceptors, staticAuth.StreamInterceptor())
 	}
 
 	// Build server options
@@ -204,7 +210,7 @@ func NewGRPCServer(cfg *config.Config, version VersionInfo) (*grpc.Server, *Serv
 	}
 	slog.Info("gRPC server created",
 		"tls_enabled", cfg.TLS.Enabled,
-		"auth_enabled", authenticator != nil,
+		"auth_mode", cfg.Auth.AuthMode,
 		"multitenancy_enabled", tenantInterceptor != nil,
 		"tenant_count", tenantCount,
 		"version", version.Version,
