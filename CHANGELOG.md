@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.11] - 2026-01-14
+
+### Added
+- **Solstice Migration Plan**: Created comprehensive migration plan document
+  - `.planning/SOLSTICE_MIGRATION_PLAN.md` - 5-phase plan to replace Solstice's internal LLM code with Airborne
+  - Phase 1: Core provider parity (OpenAI, Gemini, Anthropic enhancements)
+  - Phase 2: File handling API for RAG functionality
+  - Phase 3: Additional providers (21 providers from Solstice)
+  - Phase 4: Advanced features (failover, streaming, structured output)
+  - Phase 5: Solstice integration with gradual rollout
+  - Estimated effort: 8-11 weeks
+
+Agent: Claude:Opus 4.5
+
 ## [0.6.10] - 2026-01-14
 
 ### Added
