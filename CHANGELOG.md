@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.14] - 2026-01-14
+
+### Added
+- **Phase 2: File Handling API** (Native provider file stores):
+  - **OpenAI Vector Stores**:
+    - `CreateVectorStore` - Create OpenAI vector stores with optional expiration
+    - `UploadFileToVectorStore` - Upload files with automatic processing polling
+    - `DeleteVectorStore` - Delete vector stores
+    - `GetVectorStore` - Retrieve vector store info and file counts
+    - `ListVectorStores` - List all vector stores for account
+  - **Gemini FileSearchStore** (REST API wrapper):
+    - `CreateFileSearchStore` - Create Gemini file search stores
+    - `UploadFileToFileSearchStore` - Upload files with operation monitoring
+    - `DeleteFileSearchStore` - Delete stores with force option
+    - `GetFileSearchStore` - Retrieve store info and document counts
+    - `ListFileSearchStores` - List all file search stores
+  - **FileService Provider Routing**:
+    - Routes `CreateFileStore`, `UploadFile`, `DeleteFileStore`, `GetFileStore`, `ListFileStores` by provider
+    - `PROVIDER_OPENAI` → OpenAI Vector Stores API
+    - `PROVIDER_GEMINI` → Gemini FileSearchStore REST API
+    - `PROVIDER_UNSPECIFIED` → Internal Qdrant-based RAG (existing behavior)
+
+Agent: Claude:Opus 4.5
+
 ## [0.6.13] - 2026-01-14
 
 ### Added
