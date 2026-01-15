@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.22] - 2026-01-15
+
+### Fixed
+- **Include Key ID in JSON Unmarshal Error Messages** (`internal/auth/keys.go`):
+  - Error message for key unmarshal failures now includes the key ID
+  - Changed from generic "failed to unmarshal key" to "data corruption in key store for <keyID>"
+  - Helps distinguish between transient Redis failures and permanent data corruption issues
+  - Makes debugging easier when investigating key store problems
+
+Agent: Claude:Opus 4.5
+
 ## [0.6.21] - 2026-01-15
 
 ### Fixed

@@ -240,7 +240,7 @@ func (s *KeyStore) getKey(ctx context.Context, keyID string) (*ClientKey, error)
 
 	var key ClientKey
 	if err := json.Unmarshal([]byte(data), &key); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal key: %w", err)
+		return nil, fmt.Errorf("data corruption in key store for %q: %w", keyID, err)
 	}
 
 	return &key, nil
