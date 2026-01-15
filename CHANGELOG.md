@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.20] - 2026-01-15
+
+### Fixed
+- **Log Warnings for Invalid Environment Variable Values** (`internal/config/config.go`):
+  - Added slog.Warn() logging for all env var parse failures in `applyEnvOverrides()`
+  - Previously invalid env vars (e.g., `AIRBORNE_GRPC_PORT="invalid"`) were silently ignored
+  - Operators now receive warnings to help diagnose configuration issues
+  - Affected environment variables:
+    - `AIRBORNE_GRPC_PORT` - integer parsing
+    - `AIRBORNE_TLS_ENABLED` - boolean parsing
+    - `REDIS_DB` - integer parsing
+    - `RAG_ENABLED` - boolean parsing
+    - `RAG_CHUNK_SIZE` - integer parsing
+    - `RAG_CHUNK_OVERLAP` - integer parsing
+    - `RAG_RETRIEVAL_TOP_K` - integer parsing
+
+Agent: Claude:Opus 4.5
+
 ## [0.6.19] - 2026-01-15
 
 ### Performance

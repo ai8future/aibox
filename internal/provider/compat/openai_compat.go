@@ -132,15 +132,14 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 		baseURL = cfg.BaseURL
 	}
 
-	// Create capturing transport for debug JSON (only when debug enabled)
-	var capture *httpcapture.Transport
+	// Create capturing transport for debug JSON
+	capture := httpcapture.New()
+
+	// Create client
 	opts := []option.RequestOption{
 		option.WithAPIKey(cfg.APIKey),
 		option.WithBaseURL(baseURL),
-	}
-	if c.debug {
-		capture = httpcapture.New()
-		opts = append(opts, option.WithHTTPClient(capture.Client()))
+		option.WithHTTPClient(capture.Client()),
 	}
 
 	client := openai.NewClient(opts...)
@@ -229,18 +228,12 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 			"tokens_out", usage.OutputTokens,
 		)
 
-		var reqJSON, respJSON []byte
-		if capture != nil {
-			reqJSON = capture.RequestBody
-			respJSON = capture.ResponseBody
-		}
-
 		return provider.GenerateResult{
 			Text:         text,
 			Usage:        usage,
 			Model:        resp.Model,
-			RequestJSON:  reqJSON,
-			ResponseJSON: respJSON,
+			RequestJSON:  capture.RequestBody,
+			ResponseJSON: capture.ResponseBody,
 		}, nil
 	}
 

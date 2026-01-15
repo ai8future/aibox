@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -186,6 +187,8 @@ func (c *Config) applyEnvOverrides() {
 	if port := os.Getenv("AIRBORNE_GRPC_PORT"); port != "" {
 		if p, err := strconv.Atoi(port); err == nil {
 			c.Server.GRPCPort = p
+		} else {
+			slog.Warn("invalid AIRBORNE_GRPC_PORT, using default", "value", port, "error", err)
 		}
 	}
 
@@ -197,6 +200,8 @@ func (c *Config) applyEnvOverrides() {
 	if enabled := os.Getenv("AIRBORNE_TLS_ENABLED"); enabled != "" {
 		if v, err := strconv.ParseBool(enabled); err == nil {
 			c.TLS.Enabled = v
+		} else {
+			slog.Warn("invalid AIRBORNE_TLS_ENABLED, using default", "value", enabled, "error", err)
 		}
 	}
 	if cert := os.Getenv("AIRBORNE_TLS_CERT_FILE"); cert != "" {
@@ -217,6 +222,8 @@ func (c *Config) applyEnvOverrides() {
 	if db := os.Getenv("REDIS_DB"); db != "" {
 		if d, err := strconv.Atoi(db); err == nil {
 			c.Redis.DB = d
+		} else {
+			slog.Warn("invalid REDIS_DB, using default", "value", db, "error", err)
 		}
 	}
 
@@ -244,6 +251,8 @@ func (c *Config) applyEnvOverrides() {
 	if enabled := os.Getenv("RAG_ENABLED"); enabled != "" {
 		if v, err := strconv.ParseBool(enabled); err == nil {
 			c.RAG.Enabled = v
+		} else {
+			slog.Warn("invalid RAG_ENABLED, using default", "value", enabled, "error", err)
 		}
 	}
 	if url := os.Getenv("RAG_OLLAMA_URL"); url != "" {
@@ -261,16 +270,22 @@ func (c *Config) applyEnvOverrides() {
 	if size := os.Getenv("RAG_CHUNK_SIZE"); size != "" {
 		if s, err := strconv.Atoi(size); err == nil {
 			c.RAG.ChunkSize = s
+		} else {
+			slog.Warn("invalid RAG_CHUNK_SIZE, using default", "value", size, "error", err)
 		}
 	}
 	if overlap := os.Getenv("RAG_CHUNK_OVERLAP"); overlap != "" {
 		if o, err := strconv.Atoi(overlap); err == nil {
 			c.RAG.ChunkOverlap = o
+		} else {
+			slog.Warn("invalid RAG_CHUNK_OVERLAP, using default", "value", overlap, "error", err)
 		}
 	}
 	if topK := os.Getenv("RAG_RETRIEVAL_TOP_K"); topK != "" {
 		if k, err := strconv.Atoi(topK); err == nil {
 			c.RAG.RetrievalTopK = k
+		} else {
+			slog.Warn("invalid RAG_RETRIEVAL_TOP_K, using default", "value", topK, "error", err)
 		}
 	}
 }

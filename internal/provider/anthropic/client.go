@@ -115,14 +115,13 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 		defer cancel()
 	}
 
-	// Create capturing transport for debug JSON (only when debug enabled)
-	var capture *httpcapture.Transport
+	// Create capturing transport for debug JSON
+	capture := httpcapture.New()
+
+	// Create client
 	opts := []option.RequestOption{
 		option.WithAPIKey(cfg.APIKey),
-	}
-	if c.debug {
-		capture = httpcapture.New()
-		opts = append(opts, option.WithHTTPClient(capture.Client()))
+		option.WithHTTPClient(capture.Client()),
 	}
 	if cfg.BaseURL != "" {
 		// SECURITY: Validate base URL to prevent SSRF attacks
@@ -270,19 +269,13 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 			"tokens_out", usage.OutputTokens,
 		)
 
-		var reqJSON, respJSON []byte
-		if capture != nil {
-			reqJSON = capture.RequestBody
-			respJSON = capture.ResponseBody
-		}
-
 		return provider.GenerateResult{
 			Text:         finalText,
 			ResponseID:   resp.ID,
 			Usage:        usage,
 			Model:        model,
-			RequestJSON:  reqJSON,
-			ResponseJSON: respJSON,
+			RequestJSON:  capture.RequestBody,
+			ResponseJSON: capture.ResponseBody,
 		}, nil
 	}
 
@@ -326,9 +319,13 @@ func (c *Client) GenerateReplyStream(ctx context.Context, params provider.Genera
 		model = params.OverrideModel
 	}
 
-	// Create client (no HTTP capture needed for streaming)
+	// Create capturing transport for debug JSON
+	capture := httpcapture.New()
+
+	// Create client
 	opts := []option.RequestOption{
 		option.WithAPIKey(cfg.APIKey),
+		option.WithHTTPClient(capture.Client()),
 	}
 	if cfg.BaseURL != "" {
 		// SECURITY: Validate base URL to prevent SSRF attacks
