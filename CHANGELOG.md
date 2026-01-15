@@ -2,6 +2,45 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.16] - 2026-01-15
+
+### Added
+- **Phase 4: Function Calling & Code Execution** (Unified tool interface):
+  - **Proto definitions** (`api/proto/airborne/v1/common.proto`):
+    - `Tool` message - Function definition with name, description, JSON schema parameters
+    - `ToolCall` message - Model's request to invoke a tool
+    - `ToolResult` message - Output from tool execution for multi-turn
+    - `CodeExecutionResult` message - Output from code interpreter/execution
+    - `GeneratedFile` message - Files created during code execution
+  - **Request enhancements** (`api/proto/airborne/v1/airborne.proto`):
+    - `enable_code_execution` flag for code interpreter/execution
+    - `tools` field for custom function definitions
+    - `tool_results` field for multi-turn tool conversations
+  - **Response enhancements**:
+    - `tool_calls` - Tools the model wants to invoke
+    - `requires_tool_output` - Signals client must provide tool results
+    - `code_executions` - Results from code execution
+  - **Streaming support**:
+    - `ToolCallUpdate` chunk for streaming tool calls
+    - `CodeExecutionUpdate` chunk for streaming code execution
+  - **OpenAI provider** (`internal/provider/openai/client.go`):
+    - Custom function tools via `params.Tools`
+    - Code interpreter tool via `enable_code_execution`
+    - Tool call extraction from function_call outputs
+    - Code execution extraction from code_interpreter_call outputs
+  - **Gemini provider** (`internal/provider/gemini/client.go`):
+    - Custom function tools via FunctionDeclarations
+    - Code execution tool via ToolCodeExecution
+    - Function call extraction from response parts
+    - Code execution result extraction (ExecutableCode, CodeExecutionResult)
+  - **Provider interface** (`internal/provider/provider.go`):
+    - `EnableCodeExecution` in GenerateParams
+    - `Tools` and `ToolResults` in GenerateParams
+    - `ToolCalls`, `RequiresToolOutput`, `CodeExecutions` in GenerateResult
+    - `ChunkTypeToolCall` and `ChunkTypeCodeExecution` chunk types
+
+Agent: Claude:Opus 4.5
+
 ## [0.6.15] - 2026-01-14
 
 ### Added

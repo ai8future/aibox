@@ -528,6 +528,363 @@ func (x *ProviderConfig) GetExtraOptions() map[string]string {
 	return nil
 }
 
+// Tool defines a function that the model can call
+type Tool struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Name of the tool/function (must be a valid identifier)
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Description of what the tool does (helps model decide when to use it)
+	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	// JSON Schema for the tool parameters (as JSON string)
+	// Example: {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}
+	ParametersSchema string `protobuf:"bytes,3,opt,name=parameters_schema,json=parametersSchema,proto3" json:"parameters_schema,omitempty"`
+	// Whether to require strict JSON schema adherence (OpenAI-specific)
+	Strict        bool `protobuf:"varint,4,opt,name=strict,proto3" json:"strict,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Tool) Reset() {
+	*x = Tool{}
+	mi := &file_airborne_v1_common_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Tool) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Tool) ProtoMessage() {}
+
+func (x *Tool) ProtoReflect() protoreflect.Message {
+	mi := &file_airborne_v1_common_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Tool.ProtoReflect.Descriptor instead.
+func (*Tool) Descriptor() ([]byte, []int) {
+	return file_airborne_v1_common_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *Tool) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Tool) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *Tool) GetParametersSchema() string {
+	if x != nil {
+		return x.ParametersSchema
+	}
+	return ""
+}
+
+func (x *Tool) GetStrict() bool {
+	if x != nil {
+		return x.Strict
+	}
+	return false
+}
+
+// ToolCall represents the model's request to invoke a tool
+type ToolCall struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Unique ID for this tool call (used to match with ToolResult)
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Name of the tool to invoke
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// Arguments as JSON string
+	Arguments     string `protobuf:"bytes,3,opt,name=arguments,proto3" json:"arguments,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ToolCall) Reset() {
+	*x = ToolCall{}
+	mi := &file_airborne_v1_common_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ToolCall) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ToolCall) ProtoMessage() {}
+
+func (x *ToolCall) ProtoReflect() protoreflect.Message {
+	mi := &file_airborne_v1_common_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ToolCall.ProtoReflect.Descriptor instead.
+func (*ToolCall) Descriptor() ([]byte, []int) {
+	return file_airborne_v1_common_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ToolCall) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ToolCall) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ToolCall) GetArguments() string {
+	if x != nil {
+		return x.Arguments
+	}
+	return ""
+}
+
+// ToolResult contains the output from a tool execution
+type ToolResult struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// ID of the tool call this is responding to
+	ToolCallId string `protobuf:"bytes,1,opt,name=tool_call_id,json=toolCallId,proto3" json:"tool_call_id,omitempty"`
+	// Output from the tool as string (typically JSON)
+	Output string `protobuf:"bytes,2,opt,name=output,proto3" json:"output,omitempty"`
+	// Whether the tool execution failed
+	IsError       bool `protobuf:"varint,3,opt,name=is_error,json=isError,proto3" json:"is_error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ToolResult) Reset() {
+	*x = ToolResult{}
+	mi := &file_airborne_v1_common_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ToolResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ToolResult) ProtoMessage() {}
+
+func (x *ToolResult) ProtoReflect() protoreflect.Message {
+	mi := &file_airborne_v1_common_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ToolResult.ProtoReflect.Descriptor instead.
+func (*ToolResult) Descriptor() ([]byte, []int) {
+	return file_airborne_v1_common_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ToolResult) GetToolCallId() string {
+	if x != nil {
+		return x.ToolCallId
+	}
+	return ""
+}
+
+func (x *ToolResult) GetOutput() string {
+	if x != nil {
+		return x.Output
+	}
+	return ""
+}
+
+func (x *ToolResult) GetIsError() bool {
+	if x != nil {
+		return x.IsError
+	}
+	return false
+}
+
+// CodeExecutionResult contains output from code execution
+type CodeExecutionResult struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The code that was executed
+	Code string `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	// Language of the code (e.g., "python")
+	Language string `protobuf:"bytes,2,opt,name=language,proto3" json:"language,omitempty"`
+	// Standard output from execution
+	Stdout string `protobuf:"bytes,3,opt,name=stdout,proto3" json:"stdout,omitempty"`
+	// Standard error from execution
+	Stderr string `protobuf:"bytes,4,opt,name=stderr,proto3" json:"stderr,omitempty"`
+	// Exit code (0 = success)
+	ExitCode int32 `protobuf:"varint,5,opt,name=exit_code,json=exitCode,proto3" json:"exit_code,omitempty"`
+	// Any files generated by the execution
+	Files         []*GeneratedFile `protobuf:"bytes,6,rep,name=files,proto3" json:"files,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CodeExecutionResult) Reset() {
+	*x = CodeExecutionResult{}
+	mi := &file_airborne_v1_common_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CodeExecutionResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CodeExecutionResult) ProtoMessage() {}
+
+func (x *CodeExecutionResult) ProtoReflect() protoreflect.Message {
+	mi := &file_airborne_v1_common_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CodeExecutionResult.ProtoReflect.Descriptor instead.
+func (*CodeExecutionResult) Descriptor() ([]byte, []int) {
+	return file_airborne_v1_common_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *CodeExecutionResult) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *CodeExecutionResult) GetLanguage() string {
+	if x != nil {
+		return x.Language
+	}
+	return ""
+}
+
+func (x *CodeExecutionResult) GetStdout() string {
+	if x != nil {
+		return x.Stdout
+	}
+	return ""
+}
+
+func (x *CodeExecutionResult) GetStderr() string {
+	if x != nil {
+		return x.Stderr
+	}
+	return ""
+}
+
+func (x *CodeExecutionResult) GetExitCode() int32 {
+	if x != nil {
+		return x.ExitCode
+	}
+	return 0
+}
+
+func (x *CodeExecutionResult) GetFiles() []*GeneratedFile {
+	if x != nil {
+		return x.Files
+	}
+	return nil
+}
+
+// GeneratedFile represents a file created during code execution
+type GeneratedFile struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Filename
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// MIME type
+	MimeType string `protobuf:"bytes,2,opt,name=mime_type,json=mimeType,proto3" json:"mime_type,omitempty"`
+	// File content (base64 encoded for binary files)
+	Content       []byte `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GeneratedFile) Reset() {
+	*x = GeneratedFile{}
+	mi := &file_airborne_v1_common_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GeneratedFile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GeneratedFile) ProtoMessage() {}
+
+func (x *GeneratedFile) ProtoReflect() protoreflect.Message {
+	mi := &file_airborne_v1_common_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GeneratedFile.ProtoReflect.Descriptor instead.
+func (*GeneratedFile) Descriptor() ([]byte, []int) {
+	return file_airborne_v1_common_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GeneratedFile) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GeneratedFile) GetMimeType() string {
+	if x != nil {
+		return x.MimeType
+	}
+	return ""
+}
+
+func (x *GeneratedFile) GetContent() []byte {
+	if x != nil {
+		return x.Content
+	}
+	return nil
+}
+
 var File_airborne_v1_common_proto protoreflect.FileDescriptor
 
 const file_airborne_v1_common_proto_rawDesc = "" +
@@ -573,7 +930,33 @@ const file_airborne_v1_common_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x0e\n" +
 	"\f_temperatureB\b\n" +
 	"\x06_top_pB\x14\n" +
-	"\x12_max_output_tokens*\xc9\x04\n" +
+	"\x12_max_output_tokens\"\x81\x01\n" +
+	"\x04Tool\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\x12+\n" +
+	"\x11parameters_schema\x18\x03 \x01(\tR\x10parametersSchema\x12\x16\n" +
+	"\x06strict\x18\x04 \x01(\bR\x06strict\"L\n" +
+	"\bToolCall\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1c\n" +
+	"\targuments\x18\x03 \x01(\tR\targuments\"a\n" +
+	"\n" +
+	"ToolResult\x12 \n" +
+	"\ftool_call_id\x18\x01 \x01(\tR\n" +
+	"toolCallId\x12\x16\n" +
+	"\x06output\x18\x02 \x01(\tR\x06output\x12\x19\n" +
+	"\bis_error\x18\x03 \x01(\bR\aisError\"\xc4\x01\n" +
+	"\x13CodeExecutionResult\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code\x12\x1a\n" +
+	"\blanguage\x18\x02 \x01(\tR\blanguage\x12\x16\n" +
+	"\x06stdout\x18\x03 \x01(\tR\x06stdout\x12\x16\n" +
+	"\x06stderr\x18\x04 \x01(\tR\x06stderr\x12\x1b\n" +
+	"\texit_code\x18\x05 \x01(\x05R\bexitCode\x120\n" +
+	"\x05files\x18\x06 \x03(\v2\x1a.airborne.v1.GeneratedFileR\x05files\"Z\n" +
+	"\rGeneratedFile\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1b\n" +
+	"\tmime_type\x18\x02 \x01(\tR\bmimeType\x12\x18\n" +
+	"\acontent\x18\x03 \x01(\fR\acontent*\xc9\x04\n" +
 	"\bProvider\x12\x18\n" +
 	"\x14PROVIDER_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fPROVIDER_OPENAI\x10\x01\x12\x13\n" +
@@ -616,24 +999,30 @@ func file_airborne_v1_common_proto_rawDescGZIP() []byte {
 }
 
 var file_airborne_v1_common_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_airborne_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_airborne_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_airborne_v1_common_proto_goTypes = []any{
-	(Provider)(0),          // 0: airborne.v1.Provider
-	(Citation_Type)(0),     // 1: airborne.v1.Citation.Type
-	(*Message)(nil),        // 2: airborne.v1.Message
-	(*Usage)(nil),          // 3: airborne.v1.Usage
-	(*Citation)(nil),       // 4: airborne.v1.Citation
-	(*ProviderConfig)(nil), // 5: airborne.v1.ProviderConfig
-	nil,                    // 6: airborne.v1.ProviderConfig.ExtraOptionsEntry
+	(Provider)(0),               // 0: airborne.v1.Provider
+	(Citation_Type)(0),          // 1: airborne.v1.Citation.Type
+	(*Message)(nil),             // 2: airborne.v1.Message
+	(*Usage)(nil),               // 3: airborne.v1.Usage
+	(*Citation)(nil),            // 4: airborne.v1.Citation
+	(*ProviderConfig)(nil),      // 5: airborne.v1.ProviderConfig
+	(*Tool)(nil),                // 6: airborne.v1.Tool
+	(*ToolCall)(nil),            // 7: airborne.v1.ToolCall
+	(*ToolResult)(nil),          // 8: airborne.v1.ToolResult
+	(*CodeExecutionResult)(nil), // 9: airborne.v1.CodeExecutionResult
+	(*GeneratedFile)(nil),       // 10: airborne.v1.GeneratedFile
+	nil,                         // 11: airborne.v1.ProviderConfig.ExtraOptionsEntry
 }
 var file_airborne_v1_common_proto_depIdxs = []int32{
-	1, // 0: airborne.v1.Citation.type:type_name -> airborne.v1.Citation.Type
-	6, // 1: airborne.v1.ProviderConfig.extra_options:type_name -> airborne.v1.ProviderConfig.ExtraOptionsEntry
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	1,  // 0: airborne.v1.Citation.type:type_name -> airborne.v1.Citation.Type
+	11, // 1: airborne.v1.ProviderConfig.extra_options:type_name -> airborne.v1.ProviderConfig.ExtraOptionsEntry
+	10, // 2: airborne.v1.CodeExecutionResult.files:type_name -> airborne.v1.GeneratedFile
+	3,  // [3:3] is the sub-list for method output_type
+	3,  // [3:3] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_airborne_v1_common_proto_init() }
@@ -648,7 +1037,7 @@ func file_airborne_v1_common_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_airborne_v1_common_proto_rawDesc), len(file_airborne_v1_common_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   5,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

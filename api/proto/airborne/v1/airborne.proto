@@ -40,6 +40,7 @@ message GenerateReplyRequest {
   // Feature flags
   bool enable_file_search = 6;      // Enable RAG with file search
   bool enable_web_search = 7;       // Enable web search grounding
+  bool enable_code_execution = 18;  // Enable code interpreter/execution
 
   // File search configuration
   string file_store_id = 8;                     // Vector store or FileSearchStore ID
@@ -60,6 +61,10 @@ message GenerateReplyRequest {
   string client_id = 14;            // Identifies the calling client
   string request_id = 15;           // Client-provided request ID for tracing
   map<string, string> metadata = 16; // Additional metadata (e.g., user tier, project code)
+
+  // Tool/Function calling
+  repeated Tool tools = 19;           // Available tools the model can call
+  repeated ToolResult tool_results = 20;  // Results from previous tool calls (for multi-turn)
 }
 
 // GenerateReplyResponse contains the generated reply
@@ -75,6 +80,13 @@ message GenerateReplyResponse {
   bool failed_over = 7;
   Provider original_provider = 8;
   string original_error = 9;
+
+  // Tool calling
+  repeated ToolCall tool_calls = 10;  // Tools the model wants to invoke
+  bool requires_tool_output = 11;     // True if client must provide tool results
+
+  // Code execution results (if code was executed)
+  repeated CodeExecutionResult code_executions = 12;
 }
 
 // GenerateReplyChunk is a streaming response chunk
@@ -85,7 +97,19 @@ message GenerateReplyChunk {
     CitationUpdate citation_update = 3;
     StreamComplete complete = 4;
     StreamError error = 5;
+    ToolCallUpdate tool_call_update = 6;
+    CodeExecutionUpdate code_execution_update = 7;
   }
+}
+
+// ToolCallUpdate signals a tool call during streaming
+message ToolCallUpdate {
+  ToolCall tool_call = 1;
+}
+
+// CodeExecutionUpdate signals code execution during streaming
+message CodeExecutionUpdate {
+  CodeExecutionResult execution = 1;
 }
 
 // TextDelta contains incremental text
@@ -111,6 +135,9 @@ message StreamComplete {
   Provider provider = 3;
   Usage final_usage = 4;
   repeated Citation citations = 5;
+  repeated ToolCall tool_calls = 6;
+  bool requires_tool_output = 7;
+  repeated CodeExecutionResult code_executions = 8;
 }
 
 // StreamError signals an error during streaming

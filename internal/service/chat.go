@@ -132,7 +132,10 @@ func (s *ChatService) prepareRequest(ctx context.Context, req *pb.GenerateReplyR
 		OverrideModel:       req.ModelOverride,
 		EnableWebSearch:     req.EnableWebSearch,
 		EnableFileSearch:    req.EnableFileSearch,
+		EnableCodeExecution: req.EnableCodeExecution,
 		FileIDToFilename:    req.FileIdToFilename,
+		Tools:               convertTools(req.Tools),
+		ToolResults:         convertToolResults(req.ToolResults),
 		Config:              providerCfg,
 		RequestID:           requestID,
 		ClientID:            req.ClientId,
@@ -313,6 +316,26 @@ func (s *ChatService) GenerateReplyStream(req *pb.GenerateReplyRequest, stream p
 					},
 				}
 			}
+		case provider.ChunkTypeToolCall:
+			if chunk.ToolCall != nil {
+				pbChunk = &pb.GenerateReplyChunk{
+					Chunk: &pb.GenerateReplyChunk_ToolCallUpdate{
+						ToolCallUpdate: &pb.ToolCallUpdate{
+							ToolCall: convertToolCall(*chunk.ToolCall),
+						},
+					},
+				}
+			}
+		case provider.ChunkTypeCodeExecution:
+			if chunk.CodeExecution != nil {
+				pbChunk = &pb.GenerateReplyChunk{
+					Chunk: &pb.GenerateReplyChunk_CodeExecutionUpdate{
+						CodeExecutionUpdate: &pb.CodeExecutionUpdate{
+							Execution: convertCodeExecution(*chunk.CodeExecution),
+						},
+					},
+				}
+			}
 		case provider.ChunkTypeComplete:
 			// Record token usage for rate limiting on stream completion
 			if s.rateLimiter != nil && chunk.Usage != nil {
@@ -321,14 +344,22 @@ func (s *ChatService) GenerateReplyStream(req *pb.GenerateReplyRequest, stream p
 					_ = s.rateLimiter.RecordTokens(ctx, client.ClientID, chunk.Usage.TotalTokens, client.RateLimits.TokensPerMinute)
 				}
 			}
+			complete := &pb.StreamComplete{
+				ResponseId:         chunk.ResponseID,
+				Model:              chunk.Model,
+				Provider:           mapProviderToProto(prepared.provider.Name()),
+				FinalUsage:         convertUsage(chunk.Usage),
+				RequiresToolOutput: chunk.RequiresToolOutput,
+			}
+			for _, tc := range chunk.ToolCalls {
+				complete.ToolCalls = append(complete.ToolCalls, convertToolCall(tc))
+			}
+			for _, ce := range chunk.CodeExecutions {
+				complete.CodeExecutions = append(complete.CodeExecutions, convertCodeExecution(ce))
+			}
 			pbChunk = &pb.GenerateReplyChunk{
 				Chunk: &pb.GenerateReplyChunk_Complete{
-					Complete: &pb.StreamComplete{
-						ResponseId: chunk.ResponseID,
-						Model:      chunk.Model,
-						Provider:   mapProviderToProto(prepared.provider.Name()),
-						FinalUsage: convertUsage(chunk.Usage),
-					},
+					Complete: complete,
 				},
 			}
 		case provider.ChunkTypeError:
@@ -571,15 +602,24 @@ func ragChunksToCitations(chunks []rag.RetrieveResult) []provider.Citation {
 // buildResponse builds a gRPC response from provider result.
 func (s *ChatService) buildResponse(result provider.GenerateResult, providerName string, failedOver bool, originalProvider, originalError string) *pb.GenerateReplyResponse {
 	resp := &pb.GenerateReplyResponse{
-		Text:       result.Text,
-		ResponseId: result.ResponseID,
-		Usage:      convertUsage(result.Usage),
-		Model:      result.Model,
-		Provider:   mapProviderToProto(providerName),
+		Text:               result.Text,
+		ResponseId:         result.ResponseID,
+		Usage:              convertUsage(result.Usage),
+		Model:              result.Model,
+		Provider:           mapProviderToProto(providerName),
+		RequiresToolOutput: result.RequiresToolOutput,
 	}
 
 	for _, c := range result.Citations {
 		resp.Citations = append(resp.Citations, convertCitation(c))
+	}
+
+	for _, tc := range result.ToolCalls {
+		resp.ToolCalls = append(resp.ToolCalls, convertToolCall(tc))
+	}
+
+	for _, ce := range result.CodeExecutions {
+		resp.CodeExecutions = append(resp.CodeExecutions, convertCodeExecution(ce))
 	}
 
 	if failedOver {
@@ -656,4 +696,61 @@ func mapProviderToProto(name string) pb.Provider {
 
 func mapProviderFromString(name string) pb.Provider {
 	return mapProviderToProto(name)
+}
+
+func convertTools(tools []*pb.Tool) []provider.Tool {
+	if len(tools) == 0 {
+		return nil
+	}
+	result := make([]provider.Tool, len(tools))
+	for i, t := range tools {
+		result[i] = provider.Tool{
+			Name:             t.Name,
+			Description:      t.Description,
+			ParametersSchema: t.ParametersSchema,
+			Strict:           t.Strict,
+		}
+	}
+	return result
+}
+
+func convertToolResults(results []*pb.ToolResult) []provider.ToolResult {
+	if len(results) == 0 {
+		return nil
+	}
+	result := make([]provider.ToolResult, len(results))
+	for i, r := range results {
+		result[i] = provider.ToolResult{
+			ToolCallID: r.ToolCallId,
+			Output:     r.Output,
+			IsError:    r.IsError,
+		}
+	}
+	return result
+}
+
+func convertToolCall(tc provider.ToolCall) *pb.ToolCall {
+	return &pb.ToolCall{
+		Id:        tc.ID,
+		Name:      tc.Name,
+		Arguments: tc.Arguments,
+	}
+}
+
+func convertCodeExecution(ce provider.CodeExecutionResult) *pb.CodeExecutionResult {
+	result := &pb.CodeExecutionResult{
+		Code:     ce.Code,
+		Language: ce.Language,
+		Stdout:   ce.Stdout,
+		Stderr:   ce.Stderr,
+		ExitCode: int32(ce.ExitCode),
+	}
+	for _, f := range ce.Files {
+		result.Files = append(result.Files, &pb.GeneratedFile{
+			Name:     f.Name,
+			MimeType: f.MIMEType,
+			Content:  f.Content,
+		})
+	}
+	return result
 }

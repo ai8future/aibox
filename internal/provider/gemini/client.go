@@ -206,6 +206,21 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 			GoogleSearch: &genai.GoogleSearch{},
 		})
 	}
+	if params.EnableCodeExecution {
+		tools = append(tools, &genai.Tool{
+			CodeExecution: &genai.ToolCodeExecution{},
+		})
+	}
+	// Add custom function tools
+	if len(params.Tools) > 0 {
+		functionDecls := make([]*genai.FunctionDeclaration, 0, len(params.Tools))
+		for _, tool := range params.Tools {
+			functionDecls = append(functionDecls, buildFunctionDeclaration(tool))
+		}
+		tools = append(tools, &genai.Tool{
+			FunctionDeclarations: functionDecls,
+		})
+	}
 	if len(tools) > 0 {
 		generateConfig.Tools = tools
 	}
@@ -287,20 +302,27 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 
 		citations := extractCitations(resp, params.FileIDToFilename)
 		usage := extractUsage(resp)
+		toolCalls := extractFunctionCalls(resp)
+		codeExecutions := extractCodeExecutionResults(resp)
 
 		slog.Info("gemini request completed",
 			"model", model,
 			"tokens_in", usage.InputTokens,
 			"tokens_out", usage.OutputTokens,
+			"tool_calls", len(toolCalls),
+			"code_executions", len(codeExecutions),
 		)
 
 		return provider.GenerateResult{
-			Text:         text,
-			Usage:        usage,
-			Citations:    citations,
-			Model:        model,
-			RequestJSON:  capture.RequestBody,
-			ResponseJSON: capture.ResponseBody,
+			Text:               text,
+			Usage:              usage,
+			Citations:          citations,
+			Model:              model,
+			ToolCalls:          toolCalls,
+			RequiresToolOutput: len(toolCalls) > 0,
+			CodeExecutions:     codeExecutions,
+			RequestJSON:        capture.RequestBody,
+			ResponseJSON:       capture.ResponseBody,
 		}, nil
 	}
 
@@ -703,4 +725,131 @@ func sleepWithBackoff(ctx context.Context, attempt int) {
 	case <-ctx.Done():
 	case <-time.After(delay):
 	}
+}
+
+// buildFunctionDeclaration converts a provider.Tool to a Gemini FunctionDeclaration.
+func buildFunctionDeclaration(tool provider.Tool) *genai.FunctionDeclaration {
+	decl := &genai.FunctionDeclaration{
+		Name:        tool.Name,
+		Description: tool.Description,
+	}
+
+	// Parse the JSON schema string into a genai.Schema
+	if tool.ParametersSchema != "" {
+		var schemaMap map[string]interface{}
+		if err := json.Unmarshal([]byte(tool.ParametersSchema), &schemaMap); err == nil {
+			decl.Parameters = convertToSchema(schemaMap)
+		} else {
+			slog.Warn("invalid tool parameters schema", "tool", tool.Name, "error", err)
+		}
+	}
+
+	return decl
+}
+
+// convertToSchema converts a JSON schema map to genai.Schema.
+func convertToSchema(schemaMap map[string]interface{}) *genai.Schema {
+	schema := &genai.Schema{}
+
+	if t, ok := schemaMap["type"].(string); ok {
+		schema.Type = genai.Type(strings.ToUpper(t))
+	}
+	if desc, ok := schemaMap["description"].(string); ok {
+		schema.Description = desc
+	}
+	if props, ok := schemaMap["properties"].(map[string]interface{}); ok {
+		schema.Properties = make(map[string]*genai.Schema)
+		for name, prop := range props {
+			if propMap, ok := prop.(map[string]interface{}); ok {
+				schema.Properties[name] = convertToSchema(propMap)
+			}
+		}
+	}
+	if required, ok := schemaMap["required"].([]interface{}); ok {
+		for _, r := range required {
+			if s, ok := r.(string); ok {
+				schema.Required = append(schema.Required, s)
+			}
+		}
+	}
+	if items, ok := schemaMap["items"].(map[string]interface{}); ok {
+		schema.Items = convertToSchema(items)
+	}
+	if enum, ok := schemaMap["enum"].([]interface{}); ok {
+		for _, e := range enum {
+			if s, ok := e.(string); ok {
+				schema.Enum = append(schema.Enum, s)
+			}
+		}
+	}
+
+	return schema
+}
+
+// extractFunctionCalls extracts function calls from the response.
+func extractFunctionCalls(resp *genai.GenerateContentResponse) []provider.ToolCall {
+	var toolCalls []provider.ToolCall
+	if resp == nil || len(resp.Candidates) == 0 {
+		return toolCalls
+	}
+
+	for _, candidate := range resp.Candidates {
+		if candidate.Content == nil {
+			continue
+		}
+		for _, part := range candidate.Content.Parts {
+			if part.FunctionCall != nil {
+				// Convert Args to JSON string
+				argsJSON, err := json.Marshal(part.FunctionCall.Args)
+				if err != nil {
+					slog.Warn("failed to marshal function call args", "error", err)
+					argsJSON = []byte("{}")
+				}
+				toolCalls = append(toolCalls, provider.ToolCall{
+					ID:        part.FunctionCall.ID,
+					Name:      part.FunctionCall.Name,
+					Arguments: string(argsJSON),
+				})
+			}
+		}
+	}
+
+	return toolCalls
+}
+
+// extractCodeExecutionResults extracts code execution results from the response.
+func extractCodeExecutionResults(resp *genai.GenerateContentResponse) []provider.CodeExecutionResult {
+	var executions []provider.CodeExecutionResult
+	if resp == nil || len(resp.Candidates) == 0 {
+		return executions
+	}
+
+	for _, candidate := range resp.Candidates {
+		if candidate.Content == nil {
+			continue
+		}
+		for _, part := range candidate.Content.Parts {
+			if part.ExecutableCode != nil {
+				exec := provider.CodeExecutionResult{
+					Code:     part.ExecutableCode.Code,
+					Language: string(part.ExecutableCode.Language),
+				}
+				executions = append(executions, exec)
+			}
+			if part.CodeExecutionResult != nil {
+				// Find the matching execution and update with output
+				if len(executions) > 0 {
+					last := &executions[len(executions)-1]
+					last.Stdout = part.CodeExecutionResult.Output
+					if part.CodeExecutionResult.Outcome == genai.OutcomeOK {
+						last.ExitCode = 0
+					} else {
+						last.ExitCode = 1
+					}
+				}
+			}
+		}
+	}
+
+	return executions
 }

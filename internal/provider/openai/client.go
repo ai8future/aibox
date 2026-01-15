@@ -3,6 +3,7 @@ package openai
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -200,6 +201,22 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 			},
 		})
 	}
+	if params.EnableCodeExecution {
+		tools = append(tools, responses.ToolUnionParam{
+			OfCodeInterpreter: &responses.ToolCodeInterpreterParam{
+				Type: constant.CodeInterpreter("code_interpreter"),
+				Container: responses.ToolCodeInterpreterContainerUnionParam{
+					OfCodeInterpreterContainerAuto: &responses.ToolCodeInterpreterContainerCodeInterpreterContainerAutoParam{
+						Type: constant.Auto("auto"),
+					},
+				},
+			},
+		})
+	}
+	// Add custom function tools
+	for _, tool := range params.Tools {
+		tools = append(tools, buildFunctionTool(tool))
+	}
 	if len(tools) > 0 {
 		req.Tools = tools
 	}
@@ -274,12 +291,16 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 		text = stripCitationMarkers(text)
 
 		citations := extractCitations(resp, params.FileIDToFilename)
+		toolCalls := extractToolCalls(resp)
+		codeExecutions := extractCodeExecutions(resp)
 
 		slog.Info("openai request completed",
 			"response_id", resp.ID,
 			"model", model,
 			"tokens_in", resp.Usage.InputTokens,
 			"tokens_out", resp.Usage.OutputTokens,
+			"tool_calls", len(toolCalls),
+			"code_executions", len(codeExecutions),
 		)
 
 		return provider.GenerateResult{
@@ -290,10 +311,13 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 				OutputTokens: resp.Usage.OutputTokens,
 				TotalTokens:  resp.Usage.TotalTokens,
 			},
-			Citations:    citations,
-			Model:        model,
-			RequestJSON:  capture.RequestBody,
-			ResponseJSON: capture.ResponseBody,
+			Citations:          citations,
+			Model:              model,
+			ToolCalls:          toolCalls,
+			RequiresToolOutput: len(toolCalls) > 0,
+			CodeExecutions:     codeExecutions,
+			RequestJSON:        capture.RequestBody,
+			ResponseJSON:       capture.ResponseBody,
 		}, nil
 	}
 
@@ -553,4 +577,92 @@ func sleepWithBackoff(ctx context.Context, attempt int) {
 	case <-ctx.Done():
 	case <-time.After(delay):
 	}
+}
+
+// buildFunctionTool converts a provider.Tool to an OpenAI function tool.
+func buildFunctionTool(tool provider.Tool) responses.ToolUnionParam {
+	// Parse the JSON schema string into a map
+	var params map[string]any
+	if tool.ParametersSchema != "" {
+		if err := json.Unmarshal([]byte(tool.ParametersSchema), &params); err != nil {
+			slog.Warn("invalid tool parameters schema", "tool", tool.Name, "error", err)
+			params = map[string]any{"type": "object", "properties": map[string]any{}}
+		}
+	} else {
+		params = map[string]any{"type": "object", "properties": map[string]any{}}
+	}
+
+	return responses.ToolUnionParam{
+		OfFunction: &responses.FunctionToolParam{
+			Type:        constant.Function("function"),
+			Name:        tool.Name,
+			Description: openai.String(tool.Description),
+			Parameters:  params,
+			Strict:      openai.Bool(tool.Strict),
+		},
+	}
+}
+
+// extractToolCalls extracts function tool calls from the response.
+func extractToolCalls(resp *responses.Response) []provider.ToolCall {
+	var toolCalls []provider.ToolCall
+	if resp == nil {
+		return toolCalls
+	}
+
+	for _, item := range resp.Output {
+		if item.Type == "function_call" {
+			fc := item.AsFunctionCall()
+			if fc.ID == "" {
+				continue
+			}
+			toolCalls = append(toolCalls, provider.ToolCall{
+				ID:        fc.ID,
+				Name:      fc.Name,
+				Arguments: fc.Arguments,
+			})
+		}
+	}
+
+	return toolCalls
+}
+
+// extractCodeExecutions extracts code interpreter results from the response.
+func extractCodeExecutions(resp *responses.Response) []provider.CodeExecutionResult {
+	var executions []provider.CodeExecutionResult
+	if resp == nil {
+		return executions
+	}
+
+	for _, item := range resp.Output {
+		if item.Type == "code_interpreter_call" {
+			ci := item.AsCodeInterpreterCall()
+			if ci.ID == "" {
+				continue
+			}
+
+			exec := provider.CodeExecutionResult{
+				Code:     ci.Code,
+				Language: "python", // OpenAI code interpreter uses Python
+			}
+
+			// Extract results from outputs
+			for _, output := range ci.Outputs {
+				switch output.Type {
+				case "logs":
+					exec.Stdout = output.Logs
+				case "image":
+					// Image outputs have a URL
+					exec.Files = append(exec.Files, provider.GeneratedFile{
+						Name:     "output.png",
+						MIMEType: "image/png",
+					})
+				}
+			}
+
+			executions = append(executions, exec)
+		}
+	}
+
+	return executions
 }
