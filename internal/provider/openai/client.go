@@ -79,11 +79,9 @@ func (c *Client) SupportsNativeContinuity() bool {
 	return true
 }
 
-// SupportsStreaming returns false because the current implementation falls back to
-// non-streaming (calls GenerateReply and returns result as single chunk).
-// Set to true once true streaming is implemented.
+// SupportsStreaming returns true as OpenAI supports streaming responses.
 func (c *Client) SupportsStreaming() bool {
-	return false
+	return true
 }
 
 // GenerateReply implements provider.Provider using OpenAI's Responses API.
@@ -324,7 +322,7 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 	return provider.GenerateResult{}, lastErr
 }
 
-// GenerateReplyStream implements streaming responses.
+// GenerateReplyStream implements streaming responses using OpenAI's Responses API.
 func (c *Client) GenerateReplyStream(ctx context.Context, params provider.GenerateParams) (<-chan provider.StreamChunk, error) {
 	// Ensure request has a timeout
 	var cancel context.CancelFunc
@@ -332,33 +330,227 @@ func (c *Client) GenerateReplyStream(ctx context.Context, params provider.Genera
 		ctx, cancel = context.WithTimeout(ctx, requestTimeout)
 	}
 
-	// For now, fall back to non-streaming and send result as single chunk
-	ch := make(chan provider.StreamChunk, 1)
+	// Helper to clean up cancel on error returns
+	cleanup := func() {
+		if cancel != nil {
+			cancel()
+		}
+	}
+
+	cfg := params.Config
+
+	if strings.TrimSpace(cfg.APIKey) == "" {
+		cleanup()
+		return nil, errors.New("OpenAI API key is required")
+	}
+
+	model := cfg.Model
+	if model == "" {
+		model = "gpt-4o"
+	}
+	if strings.TrimSpace(params.OverrideModel) != "" {
+		model = params.OverrideModel
+	}
+
+	// Build client options
+	clientOpts := []option.RequestOption{
+		option.WithAPIKey(cfg.APIKey),
+	}
+	if cfg.BaseURL != "" {
+		if err := validation.ValidateProviderURL(cfg.BaseURL); err != nil {
+			cleanup()
+			return nil, fmt.Errorf("invalid base URL: %w", err)
+		}
+		clientOpts = append(clientOpts, option.WithBaseURL(cfg.BaseURL))
+	}
+
+	client := openai.NewClient(clientOpts...)
+
+	// Build user prompt from input and history
+	userPrompt := buildUserPrompt(params.UserInput, params.ConversationHistory)
+
+	// Build request (same as non-streaming)
+	req := responses.ResponseNewParams{
+		Model:        shared.ResponsesModel(model),
+		Instructions: openai.String(params.Instructions),
+		Input: responses.ResponseNewParamsInputUnion{
+			OfString: openai.String(userPrompt),
+		},
+	}
+
+	// Apply optional parameters
+	if cfg.Temperature != nil {
+		req.Temperature = openai.Float(*cfg.Temperature)
+	}
+	if cfg.TopP != nil {
+		req.TopP = openai.Float(*cfg.TopP)
+	}
+	if cfg.MaxOutputTokens != nil {
+		req.MaxOutputTokens = openai.Int(int64(*cfg.MaxOutputTokens))
+	}
+
+	// Apply reasoning effort
+	if effort := cfg.ExtraOptions["reasoning_effort"]; effort != "" {
+		req.Reasoning = shared.ReasoningParam{
+			Effort: mapReasoningEffort(effort),
+		}
+	}
+
+	// Build tools
+	var tools []responses.ToolUnionParam
+	if params.EnableFileSearch && strings.TrimSpace(params.FileStoreID) != "" {
+		tools = append(tools, responses.ToolUnionParam{
+			OfFileSearch: &responses.FileSearchToolParam{
+				Type:           constant.FileSearch("file_search"),
+				VectorStoreIDs: []string{params.FileStoreID},
+			},
+		})
+	}
+	if params.EnableWebSearch {
+		tools = append(tools, responses.ToolUnionParam{
+			OfWebSearchPreview: &responses.WebSearchToolParam{
+				Type:              responses.WebSearchToolTypeWebSearchPreview,
+				SearchContextSize: responses.WebSearchToolSearchContextSizeMedium,
+			},
+		})
+	}
+	if params.EnableCodeExecution {
+		tools = append(tools, responses.ToolUnionParam{
+			OfCodeInterpreter: &responses.ToolCodeInterpreterParam{
+				Type: constant.CodeInterpreter("code_interpreter"),
+				Container: responses.ToolCodeInterpreterContainerUnionParam{
+					OfCodeInterpreterContainerAuto: &responses.ToolCodeInterpreterContainerCodeInterpreterContainerAutoParam{
+						Type: constant.Auto("auto"),
+					},
+				},
+			},
+		})
+	}
+	for _, tool := range params.Tools {
+		tools = append(tools, buildFunctionTool(tool))
+	}
+	if len(tools) > 0 {
+		req.Tools = tools
+	}
+
+	// Add previous response ID for conversation continuity
+	if strings.TrimSpace(params.PreviousResponseID) != "" {
+		req.PreviousResponseID = openai.String(params.PreviousResponseID)
+	}
+
+	ch := make(chan provider.StreamChunk, 100)
+
 	go func() {
 		defer close(ch)
 		if cancel != nil {
 			defer cancel()
 		}
-		result, err := c.GenerateReply(ctx, params)
-		if err != nil {
+
+		stream := client.Responses.NewStreaming(ctx, req)
+
+		var responseID string
+		var totalText strings.Builder
+		var toolCalls []provider.ToolCall
+		var codeExecutions []provider.CodeExecutionResult
+		// Track function names by item ID (needed because done event doesn't include name)
+		functionNames := make(map[string]string)
+
+		for stream.Next() {
+			event := stream.Current()
+
+			// Handle different event types based on Type field
+			switch event.Type {
+			case "response.created":
+				created := event.AsResponseCreated()
+				if created.Response.ID != "" {
+					responseID = created.Response.ID
+				}
+
+			case "response.output_item.added":
+				// Track function call names when item is added
+				added := event.AsResponseOutputItemAdded()
+				if added.Item.Type == "function_call" {
+					fc := added.Item.AsFunctionCall()
+					functionNames[fc.ID] = fc.Name
+				}
+
+			case "response.output_text.delta":
+				delta := event.AsResponseOutputTextDelta()
+				if delta.Delta != "" {
+					ch <- provider.StreamChunk{
+						Type: provider.ChunkTypeText,
+						Text: delta.Delta,
+					}
+					totalText.WriteString(delta.Delta)
+				}
+
+			case "response.function_call_arguments.done":
+				fc := event.AsResponseFunctionCallArgumentsDone()
+				name := functionNames[fc.ItemID] // Look up name from when item was added
+				toolCall := provider.ToolCall{
+					ID:        fc.ItemID,
+					Name:      name,
+					Arguments: fc.Arguments,
+				}
+				toolCalls = append(toolCalls, toolCall)
+				ch <- provider.StreamChunk{
+					Type:     provider.ChunkTypeToolCall,
+					ToolCall: &toolCall,
+				}
+
+			case "response.code_interpreter_call_code.done":
+				ciCode := event.AsResponseCodeInterpreterCallCodeDone()
+				exec := provider.CodeExecutionResult{
+					Code:     ciCode.Code,
+					Language: "python",
+				}
+				codeExecutions = append(codeExecutions, exec)
+
+			case "response.code_interpreter_call.completed":
+				// Code execution completed - outputs available
+				if len(codeExecutions) > 0 {
+					ch <- provider.StreamChunk{
+						Type:          provider.ChunkTypeCodeExecution,
+						CodeExecution: &codeExecutions[len(codeExecutions)-1],
+					}
+				}
+
+			case "response.completed":
+				completed := event.AsResponseCompleted()
+				if completed.Response.ID != "" {
+					responseID = completed.Response.ID
+				}
+
+				var usage *provider.Usage
+				if completed.Response.Usage.TotalTokens > 0 {
+					usage = &provider.Usage{
+						InputTokens:  completed.Response.Usage.InputTokens,
+						OutputTokens: completed.Response.Usage.OutputTokens,
+						TotalTokens:  completed.Response.Usage.TotalTokens,
+					}
+				}
+
+				ch <- provider.StreamChunk{
+					Type:               provider.ChunkTypeComplete,
+					ResponseID:         responseID,
+					Model:              model,
+					Usage:              usage,
+					ToolCalls:          toolCalls,
+					RequiresToolOutput: len(toolCalls) > 0,
+					CodeExecutions:     codeExecutions,
+				}
+			}
+		}
+
+		if err := stream.Err(); err != nil {
 			ch <- provider.StreamChunk{
 				Type:      provider.ChunkTypeError,
 				Error:     err,
 				Retryable: isRetryableError(err),
 			}
-			return
-		}
-		ch <- provider.StreamChunk{
-			Type: provider.ChunkTypeText,
-			Text: result.Text,
-		}
-		ch <- provider.StreamChunk{
-			Type:       provider.ChunkTypeComplete,
-			ResponseID: result.ResponseID,
-			Model:      result.Model,
-			Usage:      result.Usage,
 		}
 	}()
+
 	return ch, nil
 }
 

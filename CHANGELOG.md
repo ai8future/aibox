@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.17] - 2026-01-15
+
+### Added
+- **Phase 5: True Streaming Support** (All providers now support real-time streaming):
+  - **OpenAI Provider** (`internal/provider/openai/client.go`):
+    - True streaming via `Responses.NewStreaming()` API
+    - Real-time text delta events (`response.output_text.delta`)
+    - Streaming tool call support (`response.function_call_arguments.done`)
+    - Streaming code execution events
+    - Response completion with usage metrics
+    - `SupportsStreaming()` now returns true
+  - **Gemini Provider** (`internal/provider/gemini/client.go`):
+    - True streaming via `Models.GenerateContentStream()` API
+    - Real-time text streaming from response candidates
+    - Streaming function call extraction
+    - Streaming code execution results
+    - `SupportsStreaming()` now returns true
+  - **Anthropic Provider** - Already had true streaming implemented
+  - **Compat Client** - Already had true streaming for OpenAI-compatible providers
+
+Agent: Claude:Opus 4.5
+
 ## [0.6.16] - 2026-01-15
 
 ### Added

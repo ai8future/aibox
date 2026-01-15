@@ -247,9 +247,9 @@ func TestClientCapabilities(t *testing.T) {
 	if client.SupportsNativeContinuity() {
 		t.Error("SupportsNativeContinuity() should be false")
 	}
-	// SupportsStreaming returns false until true streaming is implemented
-	if client.SupportsStreaming() {
-		t.Error("SupportsStreaming() should be false (falls back to non-streaming)")
+	// SupportsStreaming returns true - Gemini supports streaming via GenerateContentStream
+	if !client.SupportsStreaming() {
+		t.Error("SupportsStreaming() should be true")
 	}
 }
 

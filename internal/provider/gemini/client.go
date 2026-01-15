@@ -72,10 +72,9 @@ func (c *Client) SupportsNativeContinuity() bool {
 	return false
 }
 
-// SupportsStreaming returns false because the current implementation falls back to
-// non-streaming (calls GenerateReply and returns result as single chunk).
+// SupportsStreaming returns true as Gemini supports streaming responses.
 func (c *Client) SupportsStreaming() bool {
-	return false
+	return true
 }
 
 // GenerateReply implements provider.Provider using Google's Gemini API.
@@ -329,7 +328,7 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 	return provider.GenerateResult{}, lastErr
 }
 
-// GenerateReplyStream implements streaming responses.
+// GenerateReplyStream implements streaming responses using Gemini's streaming API.
 func (c *Client) GenerateReplyStream(ctx context.Context, params provider.GenerateParams) (<-chan provider.StreamChunk, error) {
 	// Ensure request has a timeout
 	var cancel context.CancelFunc
@@ -337,32 +336,215 @@ func (c *Client) GenerateReplyStream(ctx context.Context, params provider.Genera
 		ctx, cancel = context.WithTimeout(ctx, requestTimeout)
 	}
 
-	// For now, fall back to non-streaming
-	ch := make(chan provider.StreamChunk, 1)
+	// Helper to clean up cancel on error returns
+	cleanup := func() {
+		if cancel != nil {
+			cancel()
+		}
+	}
+
+	cfg := params.Config
+
+	if strings.TrimSpace(cfg.APIKey) == "" {
+		cleanup()
+		return nil, errors.New("Gemini API key is required")
+	}
+
+	model := cfg.Model
+	if model == "" {
+		model = "gemini-2.0-flash"
+	}
+	if strings.TrimSpace(params.OverrideModel) != "" {
+		model = params.OverrideModel
+	}
+
+	// Create Gemini client
+	clientConfig := &genai.ClientConfig{
+		APIKey:  cfg.APIKey,
+		Backend: genai.BackendGeminiAPI,
+	}
+	if cfg.BaseURL != "" {
+		if err := validation.ValidateProviderURL(cfg.BaseURL); err != nil {
+			cleanup()
+			return nil, fmt.Errorf("invalid base URL: %w", err)
+		}
+		clientConfig.HTTPOptions = genai.HTTPOptions{
+			BaseURL: cfg.BaseURL,
+		}
+	}
+
+	client, err := genai.NewClient(ctx, clientConfig)
+	if err != nil {
+		cleanup()
+		return nil, fmt.Errorf("creating gemini client: %w", err)
+	}
+
+	// Build conversation content with inline images
+	contents := buildContents(params.UserInput, params.ConversationHistory, params.InlineImages)
+
+	// Build system instruction with file ID mappings
+	systemInstruction := params.Instructions
+	if len(params.FileIDToFilename) > 0 {
+		var mappings []string
+		for id, name := range params.FileIDToFilename {
+			mappings = append(mappings, fmt.Sprintf("- %s: %s", id, name))
+		}
+		sort.Strings(mappings)
+		systemInstruction += "\n\nThe following files are attached. When referencing them, use the original filename:\n" + strings.Join(mappings, "\n")
+	}
+
+	// Build generation config
+	generateConfig := &genai.GenerateContentConfig{
+		SystemInstruction: &genai.Content{
+			Parts: []*genai.Part{genai.NewPartFromText(systemInstruction)},
+		},
+	}
+
+	// Apply optional parameters
+	if cfg.Temperature != nil {
+		temp := float32(*cfg.Temperature)
+		generateConfig.Temperature = &temp
+	}
+	if cfg.TopP != nil {
+		topP := float32(*cfg.TopP)
+		generateConfig.TopP = &topP
+	}
+	if cfg.MaxOutputTokens != nil {
+		generateConfig.MaxOutputTokens = int32(*cfg.MaxOutputTokens)
+	}
+
+	// Build tools
+	var tools []*genai.Tool
+	hasFileSearch := params.EnableFileSearch && strings.TrimSpace(params.FileStoreID) != ""
+	if hasFileSearch {
+		tools = append(tools, &genai.Tool{
+			FileSearch: &genai.FileSearch{
+				FileSearchStoreNames: []string{params.FileStoreID},
+			},
+		})
+	}
+	if params.EnableWebSearch && !hasFileSearch {
+		tools = append(tools, &genai.Tool{
+			GoogleSearch: &genai.GoogleSearch{},
+		})
+	}
+	if params.EnableCodeExecution {
+		tools = append(tools, &genai.Tool{
+			CodeExecution: &genai.ToolCodeExecution{},
+		})
+	}
+	if len(params.Tools) > 0 {
+		functionDecls := make([]*genai.FunctionDeclaration, 0, len(params.Tools))
+		for _, tool := range params.Tools {
+			functionDecls = append(functionDecls, buildFunctionDeclaration(tool))
+		}
+		tools = append(tools, &genai.Tool{
+			FunctionDeclarations: functionDecls,
+		})
+	}
+	if len(tools) > 0 {
+		generateConfig.Tools = tools
+	}
+
+	ch := make(chan provider.StreamChunk, 100)
+
 	go func() {
 		defer close(ch)
 		if cancel != nil {
 			defer cancel()
 		}
-		result, err := c.GenerateReply(ctx, params)
-		if err != nil {
-			ch <- provider.StreamChunk{
-				Type:      provider.ChunkTypeError,
-				Error:     err,
-				Retryable: isRetryableError(err),
+
+		var totalText strings.Builder
+		var toolCalls []provider.ToolCall
+		var codeExecutions []provider.CodeExecutionResult
+		var lastUsage *provider.Usage
+
+		// Use GenerateContentStream for streaming
+		for resp, err := range client.Models.GenerateContentStream(ctx, model, contents, generateConfig) {
+			if err != nil {
+				ch <- provider.StreamChunk{
+					Type:      provider.ChunkTypeError,
+					Error:     err,
+					Retryable: isRetryableError(err),
+				}
+				return
 			}
-			return
+
+			// Extract text from response candidates
+			for _, candidate := range resp.Candidates {
+				if candidate.Content == nil {
+					continue
+				}
+				for _, part := range candidate.Content.Parts {
+					// Handle text parts
+					if part.Text != "" {
+						ch <- provider.StreamChunk{
+							Type: provider.ChunkTypeText,
+							Text: part.Text,
+						}
+						totalText.WriteString(part.Text)
+					}
+
+					// Handle function calls
+					if part.FunctionCall != nil {
+						argsJSON, _ := json.Marshal(part.FunctionCall.Args)
+						toolCall := provider.ToolCall{
+							ID:        part.FunctionCall.ID,
+							Name:      part.FunctionCall.Name,
+							Arguments: string(argsJSON),
+						}
+						toolCalls = append(toolCalls, toolCall)
+						ch <- provider.StreamChunk{
+							Type:     provider.ChunkTypeToolCall,
+							ToolCall: &toolCall,
+						}
+					}
+
+					// Handle code execution
+					if part.ExecutableCode != nil {
+						exec := provider.CodeExecutionResult{
+							Code:     part.ExecutableCode.Code,
+							Language: string(part.ExecutableCode.Language),
+						}
+						codeExecutions = append(codeExecutions, exec)
+					}
+					if part.CodeExecutionResult != nil && len(codeExecutions) > 0 {
+						last := &codeExecutions[len(codeExecutions)-1]
+						last.Stdout = part.CodeExecutionResult.Output
+						if part.CodeExecutionResult.Outcome == genai.OutcomeOK {
+							last.ExitCode = 0
+						} else {
+							last.ExitCode = 1
+						}
+						ch <- provider.StreamChunk{
+							Type:          provider.ChunkTypeCodeExecution,
+							CodeExecution: last,
+						}
+					}
+				}
+			}
+
+			// Track usage from each response
+			if resp.UsageMetadata != nil {
+				lastUsage = &provider.Usage{
+					InputTokens:  int64(resp.UsageMetadata.PromptTokenCount),
+					OutputTokens: int64(resp.UsageMetadata.CandidatesTokenCount),
+					TotalTokens:  int64(resp.UsageMetadata.TotalTokenCount),
+				}
+			}
 		}
+
+		// Send completion chunk
 		ch <- provider.StreamChunk{
-			Type: provider.ChunkTypeText,
-			Text: result.Text,
-		}
-		ch <- provider.StreamChunk{
-			Type:  provider.ChunkTypeComplete,
-			Model: result.Model,
-			Usage: result.Usage,
+			Type:               provider.ChunkTypeComplete,
+			Model:              model,
+			Usage:              lastUsage,
+			ToolCalls:          toolCalls,
+			RequiresToolOutput: len(toolCalls) > 0,
+			CodeExecutions:     codeExecutions,
 		}
 	}()
+
 	return ch, nil
 }
 
