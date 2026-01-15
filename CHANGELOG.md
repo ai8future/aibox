@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.18] - 2026-01-15
+
+### Security
+- **Fix DoS via Memory Exhaustion in File Uploads** (`internal/service/files.go`):
+  - Replaced `bytes.Buffer` with temporary file for streaming file uploads
+  - Prevents memory exhaustion when handling concurrent large file uploads
+  - Previously: 50 concurrent 100MB uploads could consume 5GB RAM, causing OOM
+  - Now: File chunks written to disk-backed temp files, constant memory usage
+  - Temp files automatically cleaned up after processing
+
+Agent: Claude:Opus 4.5
+
 ## [0.6.17] - 2026-01-15
 
 ### Added

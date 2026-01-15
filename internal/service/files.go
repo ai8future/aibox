@@ -1,13 +1,13 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"time"
 
 	pb "github.com/ai8future/airborne/gen/go/airborne/v1"
@@ -218,7 +218,14 @@ func (s *FileService) UploadFile(stream pb.FileService_UploadFileServer) error {
 	)
 
 	// Collect file chunks with size limit enforcement
-	var buf bytes.Buffer
+	// SECURITY: Use a temporary file instead of bytes.Buffer to prevent memory exhaustion (DoS)
+	tmpFile, err := os.CreateTemp("", "airborne-upload-*.tmp")
+	if err != nil {
+		return status.Error(codes.Internal, "failed to create temporary file for upload")
+	}
+	defer os.Remove(tmpFile.Name())
+	defer tmpFile.Close()
+
 	var totalBytes int64
 	for {
 		// Check for context cancellation (timeout)
@@ -247,22 +254,29 @@ func (s *FileService) UploadFile(stream pb.FileService_UploadFileServer) error {
 			return fmt.Errorf("file exceeds maximum allowed size %d bytes", maxUploadBytes)
 		}
 
-		buf.Write(chunk)
+		if _, err := tmpFile.Write(chunk); err != nil {
+			return fmt.Errorf("write to temp file: %w", err)
+		}
+	}
+
+	// Reset file pointer to beginning for reading
+	if _, err := tmpFile.Seek(0, 0); err != nil {
+		return fmt.Errorf("seek temp file: %w", err)
 	}
 
 	// Route by provider
 	switch metadata.Provider {
 	case pb.Provider_PROVIDER_OPENAI:
-		return s.uploadToOpenAI(ctx, stream, metadata, &buf)
+		return s.uploadToOpenAI(ctx, stream, metadata, tmpFile)
 	case pb.Provider_PROVIDER_GEMINI:
-		return s.uploadToGemini(ctx, stream, metadata, &buf)
+		return s.uploadToGemini(ctx, stream, metadata, tmpFile)
 	default:
-		return s.uploadToInternal(ctx, stream, metadata, &buf)
+		return s.uploadToInternal(ctx, stream, metadata, tmpFile)
 	}
 }
 
 // uploadToOpenAI uploads a file to an OpenAI Vector Store.
-func (s *FileService) uploadToOpenAI(ctx context.Context, stream pb.FileService_UploadFileServer, metadata *pb.UploadFileMetadata, content *bytes.Buffer) error {
+func (s *FileService) uploadToOpenAI(ctx context.Context, stream pb.FileService_UploadFileServer, metadata *pb.UploadFileMetadata, content io.Reader) error {
 	cfg := openai.FileStoreConfig{
 		APIKey:  metadata.Config.GetApiKey(),
 		BaseURL: metadata.Config.GetBaseUrl(),
@@ -302,7 +316,7 @@ func (s *FileService) uploadToOpenAI(ctx context.Context, stream pb.FileService_
 }
 
 // uploadToGemini uploads a file to a Gemini FileSearchStore.
-func (s *FileService) uploadToGemini(ctx context.Context, stream pb.FileService_UploadFileServer, metadata *pb.UploadFileMetadata, content *bytes.Buffer) error {
+func (s *FileService) uploadToGemini(ctx context.Context, stream pb.FileService_UploadFileServer, metadata *pb.UploadFileMetadata, content io.Reader) error {
 	cfg := gemini.FileStoreConfig{
 		APIKey:  metadata.Config.GetApiKey(),
 		BaseURL: metadata.Config.GetBaseUrl(),
@@ -342,7 +356,7 @@ func (s *FileService) uploadToGemini(ctx context.Context, stream pb.FileService_
 }
 
 // uploadToInternal uploads a file to the internal Qdrant store.
-func (s *FileService) uploadToInternal(ctx context.Context, stream pb.FileService_UploadFileServer, metadata *pb.UploadFileMetadata, content *bytes.Buffer) error {
+func (s *FileService) uploadToInternal(ctx context.Context, stream pb.FileService_UploadFileServer, metadata *pb.UploadFileMetadata, content io.Reader) error {
 	// Get tenant ID from auth context
 	tenantID := auth.TenantIDFromContext(ctx)
 
