@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.23] - 2026-01-15
+
+### Documentation
+- **Add Prominent Warning to Development Auth Interceptors** (`internal/server/grpc.go`):
+  - Added explicit WARNING comments to `developmentAuthInterceptor` function
+  - Added explicit WARNING comments to `developmentAuthStreamInterceptor` function
+  - Makes it clear these functions bypass authentication entirely
+  - Warns developers to never wire these into production builds
+  - Recommends using build tags or explicit development mode checks if needed
+
+Agent: Claude:Opus 4.5
+
 ## [0.6.22] - 2026-01-15
 
 ### Fixed

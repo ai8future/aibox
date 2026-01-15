@@ -322,7 +322,11 @@ func streamLoggingInterceptor() grpc.StreamServerInterceptor {
 	}
 }
 
-// developmentAuthInterceptor injects a dev client in non-production mode when Redis is unavailable
+// developmentAuthInterceptor injects a dev client in non-production mode when Redis is unavailable.
+//
+// WARNING: This function bypasses authentication entirely. It is intended ONLY for
+// local development and testing. NEVER wire this into NewGRPCServer for production builds.
+// If you need to use this, ensure it's behind a build tag or explicit development mode check.
 func developmentAuthInterceptor() grpc.UnaryServerInterceptor {
 	slog.Warn("SECURITY: Development authentication interceptor is active - do not use in production")
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
@@ -341,7 +345,11 @@ func developmentAuthInterceptor() grpc.UnaryServerInterceptor {
 	}
 }
 
-// developmentAuthStreamInterceptor injects a dev client for streams in non-production mode
+// developmentAuthStreamInterceptor injects a dev client for streams in non-production mode.
+//
+// WARNING: This function bypasses authentication entirely. It is intended ONLY for
+// local development and testing. NEVER wire this into NewGRPCServer for production builds.
+// If you need to use this, ensure it's behind a build tag or explicit development mode check.
 func developmentAuthStreamInterceptor() grpc.StreamServerInterceptor {
 	slog.Warn("SECURITY: Development stream authentication interceptor is active - do not use in production")
 	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
