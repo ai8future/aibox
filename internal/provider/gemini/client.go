@@ -100,14 +100,15 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 		model = params.OverrideModel
 	}
 
-	// Create capturing transport for debug JSON
-	capture := httpcapture.New()
-
-	// Create Gemini client
+	// Create capturing transport for debug JSON (only when debug enabled)
+	var capture *httpcapture.Transport
 	clientConfig := &genai.ClientConfig{
-		APIKey:     cfg.APIKey,
-		Backend:    genai.BackendGeminiAPI,
-		HTTPClient: capture.Client(),
+		APIKey:  cfg.APIKey,
+		Backend: genai.BackendGeminiAPI,
+	}
+	if c.debug {
+		capture = httpcapture.New()
+		clientConfig.HTTPClient = capture.Client()
 	}
 	if cfg.BaseURL != "" {
 		// SECURITY: Validate base URL to prevent SSRF attacks
@@ -312,6 +313,12 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 			"code_executions", len(codeExecutions),
 		)
 
+		var reqJSON, respJSON []byte
+		if capture != nil {
+			reqJSON = capture.RequestBody
+			respJSON = capture.ResponseBody
+		}
+
 		return provider.GenerateResult{
 			Text:               text,
 			Usage:              usage,
@@ -320,8 +327,8 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 			ToolCalls:          toolCalls,
 			RequiresToolOutput: len(toolCalls) > 0,
 			CodeExecutions:     codeExecutions,
-			RequestJSON:        capture.RequestBody,
-			ResponseJSON:       capture.ResponseBody,
+			RequestJSON:        reqJSON,
+			ResponseJSON:       respJSON,
 		}, nil
 	}
 

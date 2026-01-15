@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.19] - 2026-01-15
+
+### Performance
+- **Fix Unconditional HTTP Capture Performance Issue** (All provider clients):
+  - **OpenAI Provider** (`internal/provider/openai/client.go`):
+    - HTTP capture transport now only created when debug mode is enabled
+    - Previously `httpcapture.New()` was called for every request
+  - **Anthropic Provider** (`internal/provider/anthropic/client.go`):
+    - Same fix applied to both `GenerateReply` and `GenerateReplyStream`
+    - Streaming method no longer creates HTTP capture (not needed)
+  - **Gemini Provider** (`internal/provider/gemini/client.go`):
+    - HTTP capture transport conditionally created based on debug flag
+  - **OpenAI-Compatible Provider** (`internal/provider/compat/openai_compat.go`):
+    - HTTP capture transport conditionally created based on debug flag
+  - Impact: Reduces GC pressure and latency overhead for production usage
+    where debug mode is typically disabled
+
+Agent: Claude:Opus 4.5
+
 ## [0.6.18] - 2026-01-15
 
 ### Security
