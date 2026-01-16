@@ -28,12 +28,12 @@ func TestLoadEnv(t *testing.T) {
 		{
 			name: "overrides",
 			env: map[string]string{
-				"AIBOX_CONFIGS_DIR": "/tmp",
-				"AIBOX_GRPC_PORT":   "8080",
-				"AIBOX_HOST":        "127.0.0.1",
-				"REDIS_ADDR":        "redis:6379",
-				"REDIS_DB":          "1",
-				"AIBOX_LOG_LEVEL":   "debug",
+				"AIRBORNE_CONFIGS_DIR": "/tmp",
+				"AIRBORNE_GRPC_PORT":   "8080",
+				"AIRBORNE_HOST":        "127.0.0.1",
+				"REDIS_ADDR":           "redis:6379",
+				"REDIS_DB":             "1",
+				"AIRBORNE_LOG_LEVEL":   "debug",
 			},
 			want: EnvConfig{
 				ConfigsDir: "/tmp",
@@ -49,23 +49,23 @@ func TestLoadEnv(t *testing.T) {
 		{
 			name: "invalid port",
 			env: map[string]string{
-				"AIBOX_GRPC_PORT": "invalid",
+				"AIRBORNE_GRPC_PORT": "invalid",
 			},
 			wantErr: true,
 		},
 		{
 			name: "tls missing cert",
 			env: map[string]string{
-				"AIBOX_TLS_ENABLED": "true",
+				"AIRBORNE_TLS_ENABLED": "true",
 			},
 			wantErr: true,
 		},
 		{
 			name: "tls valid",
 			env: map[string]string{
-				"AIBOX_TLS_ENABLED":   "true",
-				"AIBOX_TLS_CERT_FILE": "cert.pem",
-				"AIBOX_TLS_KEY_FILE":  "key.pem",
+				"AIRBORNE_TLS_ENABLED":   "true",
+				"AIRBORNE_TLS_CERT_FILE": "cert.pem",
+				"AIRBORNE_TLS_KEY_FILE":  "key.pem",
 			},
 			want: EnvConfig{
 				ConfigsDir:  "configs",

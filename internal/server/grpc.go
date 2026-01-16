@@ -81,7 +81,7 @@ func NewGRPCServer(cfg *config.Config, version VersionInfo) (*grpc.Server, *Serv
 	} else {
 		// Static token auth (default)
 		if cfg.Auth.AdminToken == "" {
-			return nil, nil, fmt.Errorf("AIBOX_ADMIN_TOKEN required for static auth mode")
+			return nil, nil, fmt.Errorf("AIRBORNE_ADMIN_TOKEN required for static auth mode")
 		}
 		slog.Info("using static token authentication (no Redis)")
 	}

@@ -48,30 +48,30 @@ func loadEnv() (EnvConfig, error) {
 	}
 
 	// Override with environment variables
-	if dir := os.Getenv("AIBOX_CONFIGS_DIR"); dir != "" {
+	if dir := os.Getenv("AIRBORNE_CONFIGS_DIR"); dir != "" {
 		cfg.ConfigsDir = dir
 	}
 
-	if port := os.Getenv("AIBOX_GRPC_PORT"); port != "" {
+	if port := os.Getenv("AIRBORNE_GRPC_PORT"); port != "" {
 		p, err := strconv.Atoi(port)
 		if err != nil {
-			return EnvConfig{}, fmt.Errorf("invalid AIBOX_GRPC_PORT: %w", err)
+			return EnvConfig{}, fmt.Errorf("invalid AIRBORNE_GRPC_PORT: %w", err)
 		}
 		cfg.GRPCPort = p
 	}
 
-	if host := os.Getenv("AIBOX_HOST"); host != "" {
+	if host := os.Getenv("AIRBORNE_HOST"); host != "" {
 		cfg.Host = host
 	}
 
 	// TLS
-	if os.Getenv("AIBOX_TLS_ENABLED") == "true" {
+	if os.Getenv("AIRBORNE_TLS_ENABLED") == "true" {
 		cfg.TLSEnabled = true
 	}
-	if cert := os.Getenv("AIBOX_TLS_CERT_FILE"); cert != "" {
+	if cert := os.Getenv("AIRBORNE_TLS_CERT_FILE"); cert != "" {
 		cfg.TLSCertFile = cert
 	}
-	if key := os.Getenv("AIBOX_TLS_KEY_FILE"); key != "" {
+	if key := os.Getenv("AIRBORNE_TLS_KEY_FILE"); key != "" {
 		cfg.TLSKeyFile = key
 	}
 
@@ -91,15 +91,15 @@ func loadEnv() (EnvConfig, error) {
 	}
 
 	// Logging
-	if level := os.Getenv("AIBOX_LOG_LEVEL"); level != "" {
+	if level := os.Getenv("AIRBORNE_LOG_LEVEL"); level != "" {
 		cfg.LogLevel = level
 	}
-	if format := os.Getenv("AIBOX_LOG_FORMAT"); format != "" {
+	if format := os.Getenv("AIRBORNE_LOG_FORMAT"); format != "" {
 		cfg.LogFormat = format
 	}
 
 	// Admin token
-	if token := os.Getenv("AIBOX_ADMIN_TOKEN"); token != "" {
+	if token := os.Getenv("AIRBORNE_ADMIN_TOKEN"); token != "" {
 		cfg.AdminToken = token
 	}
 

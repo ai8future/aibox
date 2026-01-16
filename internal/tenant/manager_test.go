@@ -179,7 +179,7 @@ func TestLoad(t *testing.T) {
 	dir := t.TempDir()
 	writeTenantJSON(t, dir, "tenant.json", "test-tenant")
 
-	t.Setenv("AIBOX_CONFIGS_DIR", dir)
+	t.Setenv("AIRBORNE_CONFIGS_DIR", dir)
 
 	mgr, err := Load("")
 	if err != nil {
@@ -198,7 +198,7 @@ func TestLoad_WithOverrideDir(t *testing.T) {
 	writeTenantJSON(t, dir, "tenant.json", "override-tenant")
 
 	// Set env to different dir (which doesn't exist)
-	t.Setenv("AIBOX_CONFIGS_DIR", "/nonexistent")
+	t.Setenv("AIRBORNE_CONFIGS_DIR", "/nonexistent")
 
 	mgr, err := Load(dir)
 	if err != nil {
