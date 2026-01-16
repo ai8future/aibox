@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.5] - 2026-01-16
+
+### Fixed
+- **Fix Missing Error Details in Logs** (`internal/errors/sanitize.go`):
+  - When sanitizing unknown errors for clients, the actual error was not logged
+  - Server-side logs only showed "provider error occurred (details redacted for security)"
+  - This made debugging "provider temporarily unavailable" errors impossible
+  - Now includes full error details in server-side logs for proper debugging
+  - Client still receives sanitized "provider temporarily unavailable" message
+
+Agent: Claude:Opus 4.5
+
 ## [1.0.4] - 2026-01-16
 
 ### Fixed

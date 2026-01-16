@@ -38,6 +38,6 @@ func SanitizeForClient(err error) string {
 	}
 
 	// Log the full error, return generic message
-	slog.Error("provider error occurred (details redacted for security)")
+	slog.Error("provider error occurred", "error", err)
 	return "provider temporarily unavailable"
 }
