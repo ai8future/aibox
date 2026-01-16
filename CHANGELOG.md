@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.6] - 2026-01-17
+
+### Added
+- **OpenAI Compatibility Layer Tests** (`internal/provider/compat/openai_compat_test.go`):
+  - Comprehensive test coverage for the compat package used by 12+ providers
+  - Tests for `buildMessages`, `extractText`, `extractUsage`, `isRetryableError`
+  - Validation tests for missing API key and invalid base URL scenarios
+  - 40+ test cases covering retry logic classification
+
+- **Provider Capability Tests** (`internal/provider/providers_test.go`):
+  - Table-driven tests verifying all 13 OpenAI-compatible providers
+  - Validates Name(), SupportsFileSearch(), SupportsWebSearch(), SupportsStreaming(), SupportsNativeContinuity()
+  - Compile-time interface compliance verification
+
+Agent: Claude:Opus 4.5
+
 ## [1.1.5] - 2026-01-17
 
 ### Security
