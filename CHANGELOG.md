@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] - 2026-01-16
+
+### Changed
+- **Optimize HTTP Capture in Providers** (`internal/provider/compat/openai_compat.go`, `internal/provider/gemini/client.go`):
+  - HTTP capture transport now only created when debug mode is enabled
+  - Reduces overhead for non-debug requests
+
+### Added
+- **Unit Tests** for httpcapture, redis, tenant/env, mistral provider
+
+### Removed
+- Cleaned up old `_codex/` report files
+
+Agent: Claude:Opus 4.5
+
 ## [1.1.0] - 2026-01-16
 
 ### Added
