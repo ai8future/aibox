@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.4] - 2026-01-16
+
+### Fixed
+- **Fix Stream Resource Leaks** (`internal/provider/openai/client.go`, `internal/provider/anthropic/client.go`):
+  - OpenAI and Anthropic streaming goroutines did not call `Close()` on the stream object
+  - This caused potential connection leaks over time as HTTP connections were not properly released
+  - Added `defer stream.Close()` immediately after stream creation in both providers
+  - Ensures proper cleanup of streaming connections regardless of how the goroutine exits
+
+Agent: Claude:Opus 4.5
+
 ## [1.0.3] - 2026-01-16
 
 ### Fixed

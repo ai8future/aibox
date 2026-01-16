@@ -388,6 +388,7 @@ func (c *Client) GenerateReplyStream(ctx context.Context, params provider.Genera
 		}
 
 		stream := client.Messages.NewStreaming(ctx, reqParams)
+		defer stream.Close()
 		message := anthropic.Message{}
 
 		for stream.Next() {

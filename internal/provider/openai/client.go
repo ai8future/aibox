@@ -480,6 +480,7 @@ func (c *Client) GenerateReplyStream(ctx context.Context, params provider.Genera
 		}
 
 		stream := client.Responses.NewStreaming(ctx, req)
+		defer stream.Close()
 
 		var responseID string
 		var totalText strings.Builder
