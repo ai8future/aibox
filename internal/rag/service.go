@@ -203,6 +203,10 @@ func (s *Service) Ingest(ctx context.Context, params IngestParams) (*IngestResul
 		return nil, fmt.Errorf("generate embeddings: %w", err)
 	}
 
+	if len(embeddings) != len(chunks) {
+		return nil, fmt.Errorf("embedding count mismatch: got %d for %d chunks", len(embeddings), len(chunks))
+	}
+
 	// Generate fileID for unique point IDs
 	fileID := strings.TrimSpace(params.FileID)
 	if fileID == "" {
