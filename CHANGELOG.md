@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.5] - 2026-01-17
+
+### Security
+- **SSRF DNS Rebinding Defense**: Added DNS resolution check in URL validation to prevent hostnames that resolve to private/metadata IPs from bypassing SSRF protection
+- **Metadata DoS Prevention**: Added key/value size limits (1KB keys, 10KB values) to `ValidateMetadata` to prevent memory exhaustion attacks
+- **SecretHash Redaction**: Redacted `SecretHash` from `ListKeys` response to prevent offline cracking attempts
+- **Client ID Log Spoofing Prevention**: Use authenticated client ID from context instead of request field to prevent log pollution
+
+### Fixed
+- **RAG Nil Guard**: Added `ensureRAGEnabled` helper to prevent nil panic in FileService when RAG is disabled
+- **RAG Embedding Count Validation**: Validate that embedding count matches chunk count in ingestion to prevent index panics
+- **Auth Header Normalization**: Added case-insensitive Bearer prefix matching and whitespace trimming to prevent auth failures
+
+### Changed
+- **BREAKING**: Environment variable prefix changed from `AIBOX_` to `AIRBORNE_` for consistency (e.g., `AIBOX_ADMIN_TOKEN` → `AIRBORNE_ADMIN_TOKEN`)
+- **API Key Parsing**: Replaced magic numbers with named constants for improved maintainability
+
+Agent: Claude:Opus 4.5
+
 ## [1.1.4] - 2026-01-17
 
 ### Added
