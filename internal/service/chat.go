@@ -461,7 +461,14 @@ func (s *ChatService) buildProviderConfig(ctx context.Context, req *pb.GenerateR
 			cfg.TopP = pCfg.TopP
 			cfg.MaxOutputTokens = pCfg.MaxOutputTokens
 			cfg.BaseURL = pCfg.BaseURL
-			cfg.ExtraOptions = pCfg.ExtraOptions
+			// SECURITY: Deep copy ExtraOptions to prevent data races and tenant data leakage
+			// Maps are reference types - direct assignment would share mutable state across goroutines
+			if pCfg.ExtraOptions != nil {
+				cfg.ExtraOptions = make(map[string]string, len(pCfg.ExtraOptions))
+				for k, v := range pCfg.ExtraOptions {
+					cfg.ExtraOptions[k] = v
+				}
+			}
 		}
 	}
 

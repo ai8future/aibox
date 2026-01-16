@@ -107,13 +107,14 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 		model = params.OverrideModel
 	}
 
-	// Create capturing transport for debug JSON
-	capture := httpcapture.New()
-
-	// Build client options
+	// Create capturing transport for debug JSON (only when debug enabled)
+	var capture *httpcapture.Transport
 	clientOpts := []option.RequestOption{
 		option.WithAPIKey(cfg.APIKey),
-		option.WithHTTPClient(capture.Client()),
+	}
+	if c.debug {
+		capture = httpcapture.New()
+		clientOpts = append(clientOpts, option.WithHTTPClient(capture.Client()))
 	}
 	if cfg.BaseURL != "" {
 		// SECURITY: Validate base URL to prevent SSRF attacks
@@ -301,6 +302,12 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 			"code_executions", len(codeExecutions),
 		)
 
+		var reqJSON, respJSON []byte
+		if capture != nil {
+			reqJSON = capture.RequestBody
+			respJSON = capture.ResponseBody
+		}
+
 		return provider.GenerateResult{
 			Text:       text,
 			ResponseID: resp.ID,
@@ -314,8 +321,8 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 			ToolCalls:          toolCalls,
 			RequiresToolOutput: len(toolCalls) > 0,
 			CodeExecutions:     codeExecutions,
-			RequestJSON:        capture.RequestBody,
-			ResponseJSON:       capture.ResponseBody,
+			RequestJSON:        reqJSON,
+			ResponseJSON:       respJSON,
 		}, nil
 	}
 
@@ -376,6 +383,7 @@ func (c *Client) GenerateReplyStream(ctx context.Context, params provider.Genera
 		Input: responses.ResponseNewParamsInputUnion{
 			OfString: openai.String(userPrompt),
 		},
+		Background: openai.Bool(true),
 	}
 
 	// Apply optional parameters
@@ -394,6 +402,31 @@ func (c *Client) GenerateReplyStream(ctx context.Context, params provider.Genera
 		req.Reasoning = shared.ReasoningParam{
 			Effort: mapReasoningEffort(effort),
 		}
+	}
+
+	// Apply service tier
+	if tier := cfg.ExtraOptions["service_tier"]; tier != "" {
+		req.ServiceTier = mapServiceTier(tier)
+	}
+
+	// Apply verbosity setting
+	if verbosity := cfg.ExtraOptions["verbosity"]; verbosity != "" {
+		textConfig := responses.ResponseTextConfigParam{}
+		textConfig.SetExtraFields(map[string]any{
+			"verbosity": strings.ToLower(verbosity),
+		})
+		req.Text = textConfig
+	}
+
+	// Apply prompt cache retention for gpt-5.x models
+	if supportsPromptCacheRetention(model) {
+		retention := cfg.ExtraOptions["prompt_cache_retention"]
+		if retention == "" {
+			retention = "24h"
+		}
+		req.SetExtraFields(map[string]any{
+			"prompt_cache_retention": retention,
+		})
 	}
 
 	// Build tools

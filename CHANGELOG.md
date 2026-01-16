@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2] - 2026-01-16
+
+### Security
+- **Fix ExtraOptions Map Data Race** (`internal/service/chat.go`):
+  - ExtraOptions map was assigned by direct reference from tenant config
+  - Request overrides then mutated this shared map, causing data races
+  - In concurrent multi-tenant environment, this could leak per-request options across tenants
+  - Fixed by deep copying the map before allowing mutations
+  - Prevents tenant data leakage and race conditions
+
+### Fixed
+- **Fix OpenAI Streaming/Non-Streaming Request Parity** (`internal/provider/openai/client.go`):
+  - Streaming requests were missing several options available in non-streaming path
+  - Added `service_tier` option to streaming requests
+  - Added `verbosity` option to streaming requests
+  - Added `prompt_cache_retention` option to streaming requests
+  - Added `Background` flag to streaming requests
+  - Users now get consistent behavior regardless of streaming mode
+
+Agent: Claude:Opus 4.5
+
 ## [1.0.1] - 2026-01-15
 
 ### Security
