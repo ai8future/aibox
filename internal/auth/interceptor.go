@@ -131,20 +131,32 @@ func (a *Authenticator) authenticate(ctx context.Context) (*ClientKey, error) {
 func extractAPIKey(md metadata.MD) string {
 	// Try authorization header first
 	if auths := md.Get("authorization"); len(auths) > 0 {
-		auth := auths[0]
-		// Support "Bearer <token>" format
-		if strings.HasPrefix(auth, "Bearer ") {
-			return strings.TrimPrefix(auth, "Bearer ")
+		if token := normalizeAuthHeader(auths[0]); token != "" {
+			return token
 		}
-		return auth
 	}
 
 	// Try x-api-key header
 	if keys := md.Get("x-api-key"); len(keys) > 0 {
-		return keys[0]
+		return strings.TrimSpace(keys[0])
 	}
 
 	return ""
+}
+
+// normalizeAuthHeader handles case-insensitive Bearer prefix and trims whitespace.
+func normalizeAuthHeader(value string) string {
+	auth := strings.TrimSpace(value)
+	if auth == "" {
+		return ""
+	}
+
+	lower := strings.ToLower(auth)
+	if strings.HasPrefix(lower, "bearer ") {
+		return strings.TrimSpace(auth[len("bearer "):])
+	}
+
+	return auth
 }
 
 // authenticatedStream wraps a ServerStream with an authenticated context
