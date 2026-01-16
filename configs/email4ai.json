@@ -13,7 +13,7 @@
     "gemini": {
       "enabled": true,
       "api_key": "ENV=EMAIL4AI_GEMINI_API_KEY",
-      "model": "gemini-2.0-flash"
+      "model": "gemini-2.5-flash"
     },
     "anthropic": {
       "enabled": true,

@@ -30,7 +30,7 @@ providers:
     base_url: ""  # Use default OpenAI API
   gemini:
     enabled: true
-    default_model: "gemini-2.0-flash"
+    default_model: "gemini-2.5-flash"
     base_url: ""  # Use default Google AI API
   anthropic:
     enabled: true

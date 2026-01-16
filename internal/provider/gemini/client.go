@@ -94,7 +94,7 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 
 	model := cfg.Model
 	if model == "" {
-		model = "gemini-2.0-flash"
+		model = "gemini-2.5-flash"
 	}
 	if strings.TrimSpace(params.OverrideModel) != "" {
 		model = params.OverrideModel
@@ -359,7 +359,7 @@ func (c *Client) GenerateReplyStream(ctx context.Context, params provider.Genera
 
 	model := cfg.Model
 	if model == "" {
-		model = "gemini-2.0-flash"
+		model = "gemini-2.5-flash"
 	}
 	if strings.TrimSpace(params.OverrideModel) != "" {
 		model = params.OverrideModel

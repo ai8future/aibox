@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.2] - 2026-01-16
+
+### Fixed
+- **Update Gemini default model from gemini-2.0-flash to gemini-2.5-flash**:
+  - The gemini-2.0-flash model is no longer available in the Gemini API
+  - Updated default model in `internal/provider/gemini/client.go` (both streaming and non-streaming)
+  - Updated default model in `internal/config/config.go`
+  - Updated config files: `configs/airborne.yaml`, `configs/email4ai.json`
+
+Agent: Claude:Opus 4.5
+
 ## [1.1.1] - 2026-01-16
 
 ### Changed
