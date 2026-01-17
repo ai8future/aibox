@@ -228,7 +228,7 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 			}
 
 			lastErr = fmt.Errorf("anthropic error: %w", err)
-			if !isRetryableError(err) {
+			if !retry.IsRetryable(err) {
 				return provider.GenerateResult{}, lastErr
 			}
 
@@ -409,7 +409,7 @@ func (c *Client) GenerateReplyStream(ctx context.Context, params provider.Genera
 			ch <- provider.StreamChunk{
 				Type:      provider.ChunkTypeError,
 				Error:     err,
-				Retryable: isRetryableError(err),
+				Retryable: retry.IsRetryable(err),
 			}
 			return
 		}
@@ -533,54 +533,3 @@ func extractText(resp *anthropic.Message) string {
 	return strings.TrimSpace(text.String())
 }
 
-// isRetryableError checks if an error should trigger a retry.
-func isRetryableError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	// Don't retry context errors
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		return false
-	}
-
-	errStr := err.Error()
-	errLower := strings.ToLower(errStr)
-
-	// Don't retry auth errors
-	authErrors := []string{"401", "403", "invalid_api_key", "authentication", "permission_denied"}
-	for _, authErr := range authErrors {
-		if strings.Contains(errLower, authErr) {
-			return false
-		}
-	}
-
-	// Don't retry invalid request errors
-	invalidErrors := []string{"400", "invalid_request", "malformed"}
-	for _, invErr := range invalidErrors {
-		if strings.Contains(errLower, invErr) {
-			return false
-		}
-	}
-
-	// Retry rate limit and server errors
-	if strings.Contains(errStr, "429") || strings.Contains(errLower, "overloaded") ||
-		strings.Contains(errLower, "rate") {
-		return true
-	}
-	if strings.Contains(errStr, "500") || strings.Contains(errStr, "502") ||
-		strings.Contains(errStr, "503") || strings.Contains(errStr, "504") ||
-		strings.Contains(errStr, "529") {
-		return true
-	}
-
-	// Retry network errors
-	networkErrors := []string{"connection", "timeout", "eof"}
-	for _, netErr := range networkErrors {
-		if strings.Contains(errLower, netErr) {
-			return true
-		}
-	}
-
-	return false
-}

@@ -195,7 +195,7 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 			}
 
 			lastErr = fmt.Errorf("%s error: %w", c.config.Name, err)
-			if !isRetryableError(err) {
+			if !retry.IsRetryable(err) {
 				return provider.GenerateResult{}, lastErr
 			}
 
@@ -306,6 +306,14 @@ func (c *Client) GenerateReplyStream(ctx context.Context, params provider.Genera
 		reqParams.MaxTokens = openai.Int(int64(*cfg.MaxOutputTokens))
 	}
 
+	if c.debug {
+		slog.Debug(fmt.Sprintf("%s streaming request", c.config.Name),
+			"model", model,
+			"base_url", baseURL,
+			"request_id", params.RequestID,
+		)
+	}
+
 	ch := make(chan provider.StreamChunk, 100)
 
 	go func() {
@@ -343,7 +351,7 @@ func (c *Client) GenerateReplyStream(ctx context.Context, params provider.Genera
 			ch <- provider.StreamChunk{
 				Type:      provider.ChunkTypeError,
 				Error:     err,
-				Retryable: isRetryableError(err),
+				Retryable: retry.IsRetryable(err),
 			}
 			return
 		}
@@ -406,51 +414,3 @@ func extractUsage(resp *openai.ChatCompletion) *provider.Usage {
 	}
 }
 
-// isRetryableError checks if an error should trigger a retry.
-func isRetryableError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		return false
-	}
-
-	errStr := err.Error()
-	errLower := strings.ToLower(errStr)
-
-	// Don't retry auth errors
-	authErrors := []string{"401", "403", "invalid_api_key", "authentication", "unauthorized"}
-	for _, authErr := range authErrors {
-		if strings.Contains(errLower, authErr) {
-			return false
-		}
-	}
-
-	// Don't retry invalid request errors
-	invalidErrors := []string{"400", "invalid_request", "malformed", "validation"}
-	for _, invErr := range invalidErrors {
-		if strings.Contains(errLower, invErr) {
-			return false
-		}
-	}
-
-	// Retry rate limit and server errors
-	if strings.Contains(errStr, "429") || strings.Contains(errLower, "rate") {
-		return true
-	}
-	if strings.Contains(errStr, "500") || strings.Contains(errStr, "502") ||
-		strings.Contains(errStr, "503") || strings.Contains(errStr, "504") {
-		return true
-	}
-
-	// Retry network errors
-	networkErrors := []string{"connection", "timeout", "temporary", "eof"}
-	for _, netErr := range networkErrors {
-		if strings.Contains(errLower, netErr) {
-			return true
-		}
-	}
-
-	return false
-}

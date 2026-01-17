@@ -258,7 +258,7 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 			}
 
 			lastErr = fmt.Errorf("openai error: %w", err)
-			if !isRetryableError(err) {
+			if !retry.IsRetryable(err) {
 				return provider.GenerateResult{}, lastErr
 			}
 
@@ -578,7 +578,7 @@ func (c *Client) GenerateReplyStream(ctx context.Context, params provider.Genera
 			ch <- provider.StreamChunk{
 				Type:      provider.ChunkTypeError,
 				Error:     err,
-				Retryable: isRetryableError(err),
+				Retryable: retry.IsRetryable(err),
 			}
 		}
 	}()
@@ -741,57 +741,6 @@ func mapServiceTier(tier string) responses.ResponseNewParamsServiceTier {
 	default:
 		return responses.ResponseNewParamsServiceTierAuto
 	}
-}
-
-// isRetryableError checks if an error should trigger a retry.
-func isRetryableError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	var apiErr *openai.Error
-	if errors.As(err, &apiErr) {
-		switch apiErr.StatusCode {
-		case 429, 500, 502, 503, 504:
-			return true
-		case 400, 401, 403, 404, 422:
-			return false
-		}
-
-		// Check error types
-		if apiErr.Type != "" {
-			switch apiErr.Type {
-			case "rate_limit_error", "server_error", "api_connection_error":
-				return true
-			case "invalid_request_error", "authentication_error", "permission_error", "not_found_error":
-				return false
-			}
-		}
-	}
-
-	errStr := strings.ToLower(err.Error())
-
-	// Network errors that are retryable
-	networkErrors := []string{
-		"connection",
-		"timeout",
-		"temporary",
-		"no such host",
-		"tls handshake",
-		"eof",
-	}
-	for _, netErr := range networkErrors {
-		if strings.Contains(errStr, netErr) {
-			return true
-		}
-	}
-
-	// Context errors are not retryable
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		return false
-	}
-
-	return false
 }
 
 // buildFunctionTool converts a provider.Tool to an OpenAI function tool.

@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.9] - 2026-01-17
+
+### Changed
+- **Consolidated Retry Logic** (`internal/retry/retryable.go`):
+  - Extracted duplicate `isRetryableError` functions from 4 provider files into shared `retry.IsRetryable`
+  - Removed ~200 lines of duplicate code across OpenAI, Gemini, Anthropic, and compat providers
+  - Unified retry detection patterns for auth errors (401, 403), invalid requests (400, 422), and retryable conditions (429, 5xx, network errors)
+
+- **Debug Logging for Compat Streaming** (`internal/provider/compat/openai_compat.go`):
+  - Added debug logging to streaming path matching non-streaming behavior
+  - Logs model, base_url, and request_id when debug mode enabled
+
+Agent: Claude:Opus 4.5
+
 ## [1.1.8] - 2026-01-17
 
 ### Changed

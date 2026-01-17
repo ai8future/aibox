@@ -10,6 +10,7 @@ import (
 	"github.com/openai/openai-go/shared"
 
 	"github.com/ai8future/airborne/internal/provider"
+	"github.com/ai8future/airborne/internal/retry"
 )
 
 func TestBuildUserPrompt_NoHistory(t *testing.T) {
@@ -81,32 +82,31 @@ func TestMapServiceTier(t *testing.T) {
 
 func TestIsRetryableError(t *testing.T) {
 	tests := []struct {
-		name    string
-		err     error
-		want    bool
+		name string
+		err  error
+		want bool
 	}{
 		{"nil error", nil, false},
-		{"status 429", &openai.Error{StatusCode: 429}, true},
-		{"status 500", &openai.Error{StatusCode: 500}, true},
-		{"status 502", &openai.Error{StatusCode: 502}, true},
-		{"status 503", &openai.Error{StatusCode: 503}, true},
-		{"status 504", &openai.Error{StatusCode: 504}, true},
-		{"status 400", &openai.Error{StatusCode: 400}, false},
-		{"status 401", &openai.Error{StatusCode: 401}, false},
-		{"status 403", &openai.Error{StatusCode: 403}, false},
-		{"status 404", &openai.Error{StatusCode: 404}, false},
-		{"status 422", &openai.Error{StatusCode: 422}, false},
+		{"status 429", errors.New("rate limit: status 429"), true},
+		{"status 500", errors.New("server error: status 500"), true},
+		{"status 502", errors.New("bad gateway: status 502"), true},
+		{"status 503", errors.New("service unavailable: status 503"), true},
+		{"status 504", errors.New("gateway timeout: status 504"), true},
+		{"status 400", errors.New("bad request: status 400"), false},
+		{"status 401", errors.New("unauthorized: status 401"), false},
+		{"status 403", errors.New("forbidden: status 403"), false},
+		{"status 422", errors.New("unprocessable: status 422"), false},
 		{"connection failure", errors.New("connection failed"), true},
 		{"timeout", errors.New("request timeout exceeded"), true},
 		{"temporary failure", errors.New("temporary network issue"), true},
-		{"bad request", errors.New("bad request"), false},
+		{"bad request text", errors.New("bad request"), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isRetryableError(tt.err)
+			got := retry.IsRetryable(tt.err)
 			if got != tt.want {
-				t.Fatalf("isRetryableError(%v) = %v, want %v", tt.err, got, tt.want)
+				t.Fatalf("retry.IsRetryable(%v) = %v, want %v", tt.err, got, tt.want)
 			}
 		})
 	}

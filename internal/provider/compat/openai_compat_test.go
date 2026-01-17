@@ -8,6 +8,7 @@ import (
 	"github.com/openai/openai-go"
 
 	"github.com/ai8future/airborne/internal/provider"
+	"github.com/ai8future/airborne/internal/retry"
 )
 
 func TestNewClient(t *testing.T) {
@@ -293,9 +294,9 @@ func TestIsRetryableError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isRetryableError(tt.err)
+			got := retry.IsRetryable(tt.err)
 			if got != tt.want {
-				t.Errorf("isRetryableError(%v) = %v, want %v", tt.err, got, tt.want)
+				t.Errorf("retry.IsRetryable(%v) = %v, want %v", tt.err, got, tt.want)
 			}
 		})
 	}

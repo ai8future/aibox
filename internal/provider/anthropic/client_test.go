@@ -8,6 +8,7 @@ import (
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 
 	"github.com/ai8future/airborne/internal/provider"
+	"github.com/ai8future/airborne/internal/retry"
 )
 
 func TestBuildMessages_NormalHistory(t *testing.T) {
@@ -98,9 +99,9 @@ func TestIsRetryableError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isRetryableError(tt.err)
+			got := retry.IsRetryable(tt.err)
 			if got != tt.want {
-				t.Fatalf("isRetryableError(%v) = %v, want %v", tt.err, got, tt.want)
+				t.Fatalf("retry.IsRetryable(%v) = %v, want %v", tt.err, got, tt.want)
 			}
 		})
 	}

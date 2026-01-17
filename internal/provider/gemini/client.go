@@ -272,7 +272,7 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 			}
 
 			lastErr = fmt.Errorf("gemini error: %w", err)
-			if !isRetryableError(err) {
+			if !retry.IsRetryable(err) {
 				return provider.GenerateResult{}, lastErr
 			}
 
@@ -522,7 +522,7 @@ func (c *Client) GenerateReplyStream(ctx context.Context, params provider.Genera
 				ch <- provider.StreamChunk{
 					Type:      provider.ChunkTypeError,
 					Error:     err,
-					Retryable: isRetryableError(err),
+					Retryable: retry.IsRetryable(err),
 				}
 				return
 			}
@@ -904,57 +904,6 @@ func structuredOutputSchema() *genai.Schema {
 		},
 		Required: []string{"reply"},
 	}
-}
-
-// isRetryableError checks if an error should trigger a retry.
-func isRetryableError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	// Don't retry context errors
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		return false
-	}
-
-	errStr := err.Error()
-	errLower := strings.ToLower(errStr)
-
-	// Don't retry auth errors
-	authErrors := []string{"401", "403", "invalid_api_key", "permission_denied", "unauthenticated"}
-	for _, authErr := range authErrors {
-		if strings.Contains(errLower, authErr) {
-			return false
-		}
-	}
-
-	// Don't retry invalid request errors
-	invalidErrors := []string{"400", "invalid_argument", "invalid_request", "malformed"}
-	for _, invErr := range invalidErrors {
-		if strings.Contains(errLower, invErr) {
-			return false
-		}
-	}
-
-	// Retry rate limit and server errors
-	if strings.Contains(errStr, "429") || strings.Contains(errLower, "resource") ||
-		strings.Contains(errLower, "rate") || strings.Contains(errLower, "overloaded") {
-		return true
-	}
-	if strings.Contains(errStr, "500") || strings.Contains(errStr, "502") ||
-		strings.Contains(errStr, "503") || strings.Contains(errStr, "504") {
-		return true
-	}
-
-	// Retry network errors
-	networkErrors := []string{"connection", "timeout", "temporary", "eof"}
-	for _, netErr := range networkErrors {
-		if strings.Contains(errLower, netErr) {
-			return true
-		}
-	}
-
-	return false
 }
 
 // buildFunctionDeclaration converts a provider.Tool to a Gemini FunctionDeclaration.
