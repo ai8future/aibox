@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.13] - 2026-01-17
+
+### Fixed
+- **Mutex Protection for tenantStream** (`internal/auth/tenant_interceptor.go`):
+  - Added `sync.Mutex` to `tenantStream` struct to protect `tenantSet` and `tenantCfg` fields
+  - `Context()` method now acquires mutex before reading `tenantCfg`
+  - `RecvMsg()` method now uses mutex when reading/writing shared state
+  - Prevents potential data races when multiple goroutines call these methods concurrently
+  - Defensive programming improvement (low priority - server-side streaming typically has single RecvMsg caller)
+
+Agent: Claude:Opus 4.5
+
 ## [1.1.12] - 2026-01-17
 
 ### Added

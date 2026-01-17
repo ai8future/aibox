@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"strings"
+	"sync"
 
 	pb "github.com/ai8future/airborne/gen/go/airborne/v1"
 	"github.com/ai8future/airborne/internal/tenant"
@@ -172,11 +173,14 @@ func TenantIDFromContext(ctx context.Context) string {
 type tenantStream struct {
 	grpc.ServerStream
 	interceptor *TenantInterceptor
+	mu          sync.Mutex // protects tenantSet and tenantCfg
 	tenantSet   bool
 	tenantCfg   *tenant.TenantConfig
 }
 
 func (s *tenantStream) Context() context.Context {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.tenantCfg != nil {
 		return context.WithValue(s.ServerStream.Context(), TenantContextKey, s.tenantCfg)
 	}
@@ -185,19 +189,25 @@ func (s *tenantStream) Context() context.Context {
 
 // RecvMsg intercepts the first message to extract tenant_id.
 func (s *tenantStream) RecvMsg(m interface{}) error {
+	s.mu.Lock()
+	alreadySet := s.tenantSet
+	s.mu.Unlock()
+
 	if err := s.ServerStream.RecvMsg(m); err != nil {
 		return err
 	}
 
 	// Extract tenant from first message if not already set
-	if !s.tenantSet {
+	if !alreadySet {
 		tenantID := extractTenantID(m)
 		cfg, err := s.interceptor.resolveTenant(tenantID)
 		if err != nil {
 			return err
 		}
+		s.mu.Lock()
 		s.tenantCfg = cfg
 		s.tenantSet = true
+		s.mu.Unlock()
 	}
 
 	return nil
