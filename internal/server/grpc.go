@@ -10,6 +10,7 @@ import (
 	pb "github.com/ai8future/airborne/gen/go/airborne/v1"
 	"github.com/ai8future/airborne/internal/auth"
 	"github.com/ai8future/airborne/internal/config"
+	"github.com/ai8future/airborne/internal/imagegen"
 	"github.com/ai8future/airborne/internal/rag"
 	"github.com/ai8future/airborne/internal/rag/embedder"
 	"github.com/ai8future/airborne/internal/rag/extractor"
@@ -186,8 +187,11 @@ func NewGRPCServer(cfg *config.Config, version VersionInfo) (*grpc.Server, *Serv
 		)
 	}
 
+	// Create image generation client
+	imageGenClient := imagegen.NewClient()
+
 	// Register services
-	chatService := service.NewChatService(rateLimiter, ragService)
+	chatService := service.NewChatService(rateLimiter, ragService, imageGenClient)
 	pb.RegisterAIBoxServiceServer(server, chatService)
 
 	adminService := service.NewAdminService(redisClient, service.AdminServiceConfig{

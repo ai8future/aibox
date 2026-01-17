@@ -87,6 +87,9 @@ message GenerateReplyResponse {
 
   // Code execution results (if code was executed)
   repeated CodeExecutionResult code_executions = 12;
+
+  // Generated images (if image generation was triggered)
+  repeated GeneratedImage images = 13;
 }
 
 // GenerateReplyChunk is a streaming response chunk
@@ -138,6 +141,7 @@ message StreamComplete {
   repeated ToolCall tool_calls = 6;
   bool requires_tool_output = 7;
   repeated CodeExecutionResult code_executions = 8;
+  repeated GeneratedImage images = 9;
 }
 
 // StreamError signals an error during streaming
@@ -145,6 +149,17 @@ message StreamError {
   string code = 1;
   string message = 2;
   bool retryable = 3;
+}
+
+// GeneratedImage represents an AI-generated image
+message GeneratedImage {
+  bytes data = 1;          // Raw image bytes (JPEG/PNG)
+  string mime_type = 2;    // MIME type (e.g., "image/jpeg")
+  string prompt = 3;       // The prompt used to generate the image
+  string alt_text = 4;     // Accessibility description
+  int32 width = 5;         // Width in pixels
+  int32 height = 6;        // Height in pixels
+  string content_id = 7;   // Content-ID for email embedding (cid:xxx)
 }
 
 // SelectProviderRequest asks which provider should handle a request

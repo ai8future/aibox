@@ -250,8 +250,10 @@ type GenerateReplyResponse struct {
 	RequiresToolOutput bool        `protobuf:"varint,11,opt,name=requires_tool_output,json=requiresToolOutput,proto3" json:"requires_tool_output,omitempty"` // True if client must provide tool results
 	// Code execution results (if code was executed)
 	CodeExecutions []*CodeExecutionResult `protobuf:"bytes,12,rep,name=code_executions,json=codeExecutions,proto3" json:"code_executions,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Generated images (if image generation was triggered)
+	Images        []*GeneratedImage `protobuf:"bytes,13,rep,name=images,proto3" json:"images,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GenerateReplyResponse) Reset() {
@@ -364,6 +366,13 @@ func (x *GenerateReplyResponse) GetRequiresToolOutput() bool {
 func (x *GenerateReplyResponse) GetCodeExecutions() []*CodeExecutionResult {
 	if x != nil {
 		return x.CodeExecutions
+	}
+	return nil
+}
+
+func (x *GenerateReplyResponse) GetImages() []*GeneratedImage {
+	if x != nil {
+		return x.Images
 	}
 	return nil
 }
@@ -775,6 +784,7 @@ type StreamComplete struct {
 	ToolCalls          []*ToolCall            `protobuf:"bytes,6,rep,name=tool_calls,json=toolCalls,proto3" json:"tool_calls,omitempty"`
 	RequiresToolOutput bool                   `protobuf:"varint,7,opt,name=requires_tool_output,json=requiresToolOutput,proto3" json:"requires_tool_output,omitempty"`
 	CodeExecutions     []*CodeExecutionResult `protobuf:"bytes,8,rep,name=code_executions,json=codeExecutions,proto3" json:"code_executions,omitempty"`
+	Images             []*GeneratedImage      `protobuf:"bytes,9,rep,name=images,proto3" json:"images,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -865,6 +875,13 @@ func (x *StreamComplete) GetCodeExecutions() []*CodeExecutionResult {
 	return nil
 }
 
+func (x *StreamComplete) GetImages() []*GeneratedImage {
+	if x != nil {
+		return x.Images
+	}
+	return nil
+}
+
 // StreamError signals an error during streaming
 type StreamError struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -926,6 +943,99 @@ func (x *StreamError) GetRetryable() bool {
 	return false
 }
 
+// GeneratedImage represents an AI-generated image
+type GeneratedImage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Data          []byte                 `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`                            // Raw image bytes (JPEG/PNG)
+	MimeType      string                 `protobuf:"bytes,2,opt,name=mime_type,json=mimeType,proto3" json:"mime_type,omitempty"`    // MIME type (e.g., "image/jpeg")
+	Prompt        string                 `protobuf:"bytes,3,opt,name=prompt,proto3" json:"prompt,omitempty"`                        // The prompt used to generate the image
+	AltText       string                 `protobuf:"bytes,4,opt,name=alt_text,json=altText,proto3" json:"alt_text,omitempty"`       // Accessibility description
+	Width         int32                  `protobuf:"varint,5,opt,name=width,proto3" json:"width,omitempty"`                         // Width in pixels
+	Height        int32                  `protobuf:"varint,6,opt,name=height,proto3" json:"height,omitempty"`                       // Height in pixels
+	ContentId     string                 `protobuf:"bytes,7,opt,name=content_id,json=contentId,proto3" json:"content_id,omitempty"` // Content-ID for email embedding (cid:xxx)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GeneratedImage) Reset() {
+	*x = GeneratedImage{}
+	mi := &file_airborne_v1_airborne_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GeneratedImage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GeneratedImage) ProtoMessage() {}
+
+func (x *GeneratedImage) ProtoReflect() protoreflect.Message {
+	mi := &file_airborne_v1_airborne_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GeneratedImage.ProtoReflect.Descriptor instead.
+func (*GeneratedImage) Descriptor() ([]byte, []int) {
+	return file_airborne_v1_airborne_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GeneratedImage) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+func (x *GeneratedImage) GetMimeType() string {
+	if x != nil {
+		return x.MimeType
+	}
+	return ""
+}
+
+func (x *GeneratedImage) GetPrompt() string {
+	if x != nil {
+		return x.Prompt
+	}
+	return ""
+}
+
+func (x *GeneratedImage) GetAltText() string {
+	if x != nil {
+		return x.AltText
+	}
+	return ""
+}
+
+func (x *GeneratedImage) GetWidth() int32 {
+	if x != nil {
+		return x.Width
+	}
+	return 0
+}
+
+func (x *GeneratedImage) GetHeight() int32 {
+	if x != nil {
+		return x.Height
+	}
+	return 0
+}
+
+func (x *GeneratedImage) GetContentId() string {
+	if x != nil {
+		return x.ContentId
+	}
+	return ""
+}
+
 // SelectProviderRequest asks which provider should handle a request
 type SelectProviderRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -941,7 +1051,7 @@ type SelectProviderRequest struct {
 
 func (x *SelectProviderRequest) Reset() {
 	*x = SelectProviderRequest{}
-	mi := &file_airborne_v1_airborne_proto_msgTypes[10]
+	mi := &file_airborne_v1_airborne_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -953,7 +1063,7 @@ func (x *SelectProviderRequest) String() string {
 func (*SelectProviderRequest) ProtoMessage() {}
 
 func (x *SelectProviderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_airborne_v1_airborne_proto_msgTypes[10]
+	mi := &file_airborne_v1_airborne_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -966,7 +1076,7 @@ func (x *SelectProviderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SelectProviderRequest.ProtoReflect.Descriptor instead.
 func (*SelectProviderRequest) Descriptor() ([]byte, []int) {
-	return file_airborne_v1_airborne_proto_rawDescGZIP(), []int{10}
+	return file_airborne_v1_airborne_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *SelectProviderRequest) GetTenantId() string {
@@ -1016,7 +1126,7 @@ type ProviderTrigger struct {
 
 func (x *ProviderTrigger) Reset() {
 	*x = ProviderTrigger{}
-	mi := &file_airborne_v1_airborne_proto_msgTypes[11]
+	mi := &file_airborne_v1_airborne_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1028,7 +1138,7 @@ func (x *ProviderTrigger) String() string {
 func (*ProviderTrigger) ProtoMessage() {}
 
 func (x *ProviderTrigger) ProtoReflect() protoreflect.Message {
-	mi := &file_airborne_v1_airborne_proto_msgTypes[11]
+	mi := &file_airborne_v1_airborne_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1041,7 +1151,7 @@ func (x *ProviderTrigger) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProviderTrigger.ProtoReflect.Descriptor instead.
 func (*ProviderTrigger) Descriptor() ([]byte, []int) {
-	return file_airborne_v1_airborne_proto_rawDescGZIP(), []int{11}
+	return file_airborne_v1_airborne_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ProviderTrigger) GetPhrase() string {
@@ -1077,7 +1187,7 @@ type SelectProviderResponse struct {
 
 func (x *SelectProviderResponse) Reset() {
 	*x = SelectProviderResponse{}
-	mi := &file_airborne_v1_airborne_proto_msgTypes[12]
+	mi := &file_airborne_v1_airborne_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1089,7 +1199,7 @@ func (x *SelectProviderResponse) String() string {
 func (*SelectProviderResponse) ProtoMessage() {}
 
 func (x *SelectProviderResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_airborne_v1_airborne_proto_msgTypes[12]
+	mi := &file_airborne_v1_airborne_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1102,7 +1212,7 @@ func (x *SelectProviderResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SelectProviderResponse.ProtoReflect.Descriptor instead.
 func (*SelectProviderResponse) Descriptor() ([]byte, []int) {
-	return file_airborne_v1_airborne_proto_rawDescGZIP(), []int{12}
+	return file_airborne_v1_airborne_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *SelectProviderResponse) GetProvider() Provider {
@@ -1164,7 +1274,7 @@ const file_airborne_v1_airborne_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\v2\x1b.airborne.v1.ProviderConfigR\x05value:\x028\x01\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb3\x04\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe8\x04\n" +
 	"\x15GenerateReplyResponse\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1f\n" +
 	"\vresponse_id\x18\x02 \x01(\tR\n" +
@@ -1181,7 +1291,8 @@ const file_airborne_v1_airborne_proto_rawDesc = "" +
 	"tool_calls\x18\n" +
 	" \x03(\v2\x15.airborne.v1.ToolCallR\ttoolCalls\x120\n" +
 	"\x14requires_tool_output\x18\v \x01(\bR\x12requiresToolOutput\x12I\n" +
-	"\x0fcode_executions\x18\f \x03(\v2 .airborne.v1.CodeExecutionResultR\x0ecodeExecutions\"\xeb\x03\n" +
+	"\x0fcode_executions\x18\f \x03(\v2 .airborne.v1.CodeExecutionResultR\x0ecodeExecutions\x123\n" +
+	"\x06images\x18\r \x03(\v2\x1b.airborne.v1.GeneratedImageR\x06images\"\xeb\x03\n" +
 	"\x12GenerateReplyChunk\x127\n" +
 	"\n" +
 	"text_delta\x18\x01 \x01(\v2\x16.airborne.v1.TextDeltaH\x00R\ttextDelta\x12=\n" +
@@ -1202,7 +1313,7 @@ const file_airborne_v1_airborne_proto_rawDesc = "" +
 	"\vUsageUpdate\x12(\n" +
 	"\x05usage\x18\x01 \x01(\v2\x12.airborne.v1.UsageR\x05usage\"C\n" +
 	"\x0eCitationUpdate\x121\n" +
-	"\bcitation\x18\x01 \x01(\v2\x15.airborne.v1.CitationR\bcitation\"\x97\x03\n" +
+	"\bcitation\x18\x01 \x01(\v2\x15.airborne.v1.CitationR\bcitation\"\xcc\x03\n" +
 	"\x0eStreamComplete\x12\x1f\n" +
 	"\vresponse_id\x18\x01 \x01(\tR\n" +
 	"responseId\x12\x14\n" +
@@ -1214,11 +1325,21 @@ const file_airborne_v1_airborne_proto_rawDesc = "" +
 	"\n" +
 	"tool_calls\x18\x06 \x03(\v2\x15.airborne.v1.ToolCallR\ttoolCalls\x120\n" +
 	"\x14requires_tool_output\x18\a \x01(\bR\x12requiresToolOutput\x12I\n" +
-	"\x0fcode_executions\x18\b \x03(\v2 .airborne.v1.CodeExecutionResultR\x0ecodeExecutions\"Y\n" +
+	"\x0fcode_executions\x18\b \x03(\v2 .airborne.v1.CodeExecutionResultR\x0ecodeExecutions\x123\n" +
+	"\x06images\x18\t \x03(\v2\x1b.airborne.v1.GeneratedImageR\x06images\"Y\n" +
 	"\vStreamError\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12\x1c\n" +
-	"\tretryable\x18\x03 \x01(\bR\tretryable\"\xd2\x01\n" +
+	"\tretryable\x18\x03 \x01(\bR\tretryable\"\xc1\x01\n" +
+	"\x0eGeneratedImage\x12\x12\n" +
+	"\x04data\x18\x01 \x01(\fR\x04data\x12\x1b\n" +
+	"\tmime_type\x18\x02 \x01(\tR\bmimeType\x12\x16\n" +
+	"\x06prompt\x18\x03 \x01(\tR\x06prompt\x12\x19\n" +
+	"\balt_text\x18\x04 \x01(\tR\aaltText\x12\x14\n" +
+	"\x05width\x18\x05 \x01(\x05R\x05width\x12\x16\n" +
+	"\x06height\x18\x06 \x01(\x05R\x06height\x12\x1d\n" +
+	"\n" +
+	"content_id\x18\a \x01(\tR\tcontentId\"\xd2\x01\n" +
 	"\x15SelectProviderRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x05 \x01(\tR\btenantId\x12\x18\n" +
 	"\acontent\x18\x01 \x01(\tR\acontent\x12+\n" +
@@ -1251,7 +1372,7 @@ func file_airborne_v1_airborne_proto_rawDescGZIP() []byte {
 	return file_airborne_v1_airborne_proto_rawDescData
 }
 
-var file_airborne_v1_airborne_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_airborne_v1_airborne_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_airborne_v1_airborne_proto_goTypes = []any{
 	(*GenerateReplyRequest)(nil),   // 0: airborne.v1.GenerateReplyRequest
 	(*GenerateReplyResponse)(nil),  // 1: airborne.v1.GenerateReplyResponse
@@ -1263,68 +1384,71 @@ var file_airborne_v1_airborne_proto_goTypes = []any{
 	(*CitationUpdate)(nil),         // 7: airborne.v1.CitationUpdate
 	(*StreamComplete)(nil),         // 8: airborne.v1.StreamComplete
 	(*StreamError)(nil),            // 9: airborne.v1.StreamError
-	(*SelectProviderRequest)(nil),  // 10: airborne.v1.SelectProviderRequest
-	(*ProviderTrigger)(nil),        // 11: airborne.v1.ProviderTrigger
-	(*SelectProviderResponse)(nil), // 12: airborne.v1.SelectProviderResponse
-	nil,                            // 13: airborne.v1.GenerateReplyRequest.FileIdToFilenameEntry
-	nil,                            // 14: airborne.v1.GenerateReplyRequest.ProviderConfigsEntry
-	nil,                            // 15: airborne.v1.GenerateReplyRequest.MetadataEntry
-	(*Message)(nil),                // 16: airborne.v1.Message
-	(Provider)(0),                  // 17: airborne.v1.Provider
-	(*Tool)(nil),                   // 18: airborne.v1.Tool
-	(*ToolResult)(nil),             // 19: airborne.v1.ToolResult
-	(*Usage)(nil),                  // 20: airborne.v1.Usage
-	(*Citation)(nil),               // 21: airborne.v1.Citation
-	(*ToolCall)(nil),               // 22: airborne.v1.ToolCall
-	(*CodeExecutionResult)(nil),    // 23: airborne.v1.CodeExecutionResult
-	(*ProviderConfig)(nil),         // 24: airborne.v1.ProviderConfig
+	(*GeneratedImage)(nil),         // 10: airborne.v1.GeneratedImage
+	(*SelectProviderRequest)(nil),  // 11: airborne.v1.SelectProviderRequest
+	(*ProviderTrigger)(nil),        // 12: airborne.v1.ProviderTrigger
+	(*SelectProviderResponse)(nil), // 13: airborne.v1.SelectProviderResponse
+	nil,                            // 14: airborne.v1.GenerateReplyRequest.FileIdToFilenameEntry
+	nil,                            // 15: airborne.v1.GenerateReplyRequest.ProviderConfigsEntry
+	nil,                            // 16: airborne.v1.GenerateReplyRequest.MetadataEntry
+	(*Message)(nil),                // 17: airborne.v1.Message
+	(Provider)(0),                  // 18: airborne.v1.Provider
+	(*Tool)(nil),                   // 19: airborne.v1.Tool
+	(*ToolResult)(nil),             // 20: airborne.v1.ToolResult
+	(*Usage)(nil),                  // 21: airborne.v1.Usage
+	(*Citation)(nil),               // 22: airborne.v1.Citation
+	(*ToolCall)(nil),               // 23: airborne.v1.ToolCall
+	(*CodeExecutionResult)(nil),    // 24: airborne.v1.CodeExecutionResult
+	(*ProviderConfig)(nil),         // 25: airborne.v1.ProviderConfig
 }
 var file_airborne_v1_airborne_proto_depIdxs = []int32{
-	16, // 0: airborne.v1.GenerateReplyRequest.conversation_history:type_name -> airborne.v1.Message
-	17, // 1: airborne.v1.GenerateReplyRequest.preferred_provider:type_name -> airborne.v1.Provider
-	13, // 2: airborne.v1.GenerateReplyRequest.file_id_to_filename:type_name -> airborne.v1.GenerateReplyRequest.FileIdToFilenameEntry
-	14, // 3: airborne.v1.GenerateReplyRequest.provider_configs:type_name -> airborne.v1.GenerateReplyRequest.ProviderConfigsEntry
-	17, // 4: airborne.v1.GenerateReplyRequest.fallback_provider:type_name -> airborne.v1.Provider
-	15, // 5: airborne.v1.GenerateReplyRequest.metadata:type_name -> airborne.v1.GenerateReplyRequest.MetadataEntry
-	18, // 6: airborne.v1.GenerateReplyRequest.tools:type_name -> airborne.v1.Tool
-	19, // 7: airborne.v1.GenerateReplyRequest.tool_results:type_name -> airborne.v1.ToolResult
-	20, // 8: airborne.v1.GenerateReplyResponse.usage:type_name -> airborne.v1.Usage
-	21, // 9: airborne.v1.GenerateReplyResponse.citations:type_name -> airborne.v1.Citation
-	17, // 10: airborne.v1.GenerateReplyResponse.provider:type_name -> airborne.v1.Provider
-	17, // 11: airborne.v1.GenerateReplyResponse.original_provider:type_name -> airborne.v1.Provider
-	22, // 12: airborne.v1.GenerateReplyResponse.tool_calls:type_name -> airborne.v1.ToolCall
-	23, // 13: airborne.v1.GenerateReplyResponse.code_executions:type_name -> airborne.v1.CodeExecutionResult
-	5,  // 14: airborne.v1.GenerateReplyChunk.text_delta:type_name -> airborne.v1.TextDelta
-	6,  // 15: airborne.v1.GenerateReplyChunk.usage_update:type_name -> airborne.v1.UsageUpdate
-	7,  // 16: airborne.v1.GenerateReplyChunk.citation_update:type_name -> airborne.v1.CitationUpdate
-	8,  // 17: airborne.v1.GenerateReplyChunk.complete:type_name -> airborne.v1.StreamComplete
-	9,  // 18: airborne.v1.GenerateReplyChunk.error:type_name -> airborne.v1.StreamError
-	3,  // 19: airborne.v1.GenerateReplyChunk.tool_call_update:type_name -> airborne.v1.ToolCallUpdate
-	4,  // 20: airborne.v1.GenerateReplyChunk.code_execution_update:type_name -> airborne.v1.CodeExecutionUpdate
-	22, // 21: airborne.v1.ToolCallUpdate.tool_call:type_name -> airborne.v1.ToolCall
-	23, // 22: airborne.v1.CodeExecutionUpdate.execution:type_name -> airborne.v1.CodeExecutionResult
-	20, // 23: airborne.v1.UsageUpdate.usage:type_name -> airborne.v1.Usage
-	21, // 24: airborne.v1.CitationUpdate.citation:type_name -> airborne.v1.Citation
-	17, // 25: airborne.v1.StreamComplete.provider:type_name -> airborne.v1.Provider
-	20, // 26: airborne.v1.StreamComplete.final_usage:type_name -> airborne.v1.Usage
-	21, // 27: airborne.v1.StreamComplete.citations:type_name -> airborne.v1.Citation
-	22, // 28: airborne.v1.StreamComplete.tool_calls:type_name -> airborne.v1.ToolCall
-	23, // 29: airborne.v1.StreamComplete.code_executions:type_name -> airborne.v1.CodeExecutionResult
-	11, // 30: airborne.v1.SelectProviderRequest.triggers:type_name -> airborne.v1.ProviderTrigger
-	17, // 31: airborne.v1.ProviderTrigger.provider:type_name -> airborne.v1.Provider
-	17, // 32: airborne.v1.SelectProviderResponse.provider:type_name -> airborne.v1.Provider
-	24, // 33: airborne.v1.GenerateReplyRequest.ProviderConfigsEntry.value:type_name -> airborne.v1.ProviderConfig
-	0,  // 34: airborne.v1.AIBoxService.GenerateReply:input_type -> airborne.v1.GenerateReplyRequest
-	0,  // 35: airborne.v1.AIBoxService.GenerateReplyStream:input_type -> airborne.v1.GenerateReplyRequest
-	10, // 36: airborne.v1.AIBoxService.SelectProvider:input_type -> airborne.v1.SelectProviderRequest
-	1,  // 37: airborne.v1.AIBoxService.GenerateReply:output_type -> airborne.v1.GenerateReplyResponse
-	2,  // 38: airborne.v1.AIBoxService.GenerateReplyStream:output_type -> airborne.v1.GenerateReplyChunk
-	12, // 39: airborne.v1.AIBoxService.SelectProvider:output_type -> airborne.v1.SelectProviderResponse
-	37, // [37:40] is the sub-list for method output_type
-	34, // [34:37] is the sub-list for method input_type
-	34, // [34:34] is the sub-list for extension type_name
-	34, // [34:34] is the sub-list for extension extendee
-	0,  // [0:34] is the sub-list for field type_name
+	17, // 0: airborne.v1.GenerateReplyRequest.conversation_history:type_name -> airborne.v1.Message
+	18, // 1: airborne.v1.GenerateReplyRequest.preferred_provider:type_name -> airborne.v1.Provider
+	14, // 2: airborne.v1.GenerateReplyRequest.file_id_to_filename:type_name -> airborne.v1.GenerateReplyRequest.FileIdToFilenameEntry
+	15, // 3: airborne.v1.GenerateReplyRequest.provider_configs:type_name -> airborne.v1.GenerateReplyRequest.ProviderConfigsEntry
+	18, // 4: airborne.v1.GenerateReplyRequest.fallback_provider:type_name -> airborne.v1.Provider
+	16, // 5: airborne.v1.GenerateReplyRequest.metadata:type_name -> airborne.v1.GenerateReplyRequest.MetadataEntry
+	19, // 6: airborne.v1.GenerateReplyRequest.tools:type_name -> airborne.v1.Tool
+	20, // 7: airborne.v1.GenerateReplyRequest.tool_results:type_name -> airborne.v1.ToolResult
+	21, // 8: airborne.v1.GenerateReplyResponse.usage:type_name -> airborne.v1.Usage
+	22, // 9: airborne.v1.GenerateReplyResponse.citations:type_name -> airborne.v1.Citation
+	18, // 10: airborne.v1.GenerateReplyResponse.provider:type_name -> airborne.v1.Provider
+	18, // 11: airborne.v1.GenerateReplyResponse.original_provider:type_name -> airborne.v1.Provider
+	23, // 12: airborne.v1.GenerateReplyResponse.tool_calls:type_name -> airborne.v1.ToolCall
+	24, // 13: airborne.v1.GenerateReplyResponse.code_executions:type_name -> airborne.v1.CodeExecutionResult
+	10, // 14: airborne.v1.GenerateReplyResponse.images:type_name -> airborne.v1.GeneratedImage
+	5,  // 15: airborne.v1.GenerateReplyChunk.text_delta:type_name -> airborne.v1.TextDelta
+	6,  // 16: airborne.v1.GenerateReplyChunk.usage_update:type_name -> airborne.v1.UsageUpdate
+	7,  // 17: airborne.v1.GenerateReplyChunk.citation_update:type_name -> airborne.v1.CitationUpdate
+	8,  // 18: airborne.v1.GenerateReplyChunk.complete:type_name -> airborne.v1.StreamComplete
+	9,  // 19: airborne.v1.GenerateReplyChunk.error:type_name -> airborne.v1.StreamError
+	3,  // 20: airborne.v1.GenerateReplyChunk.tool_call_update:type_name -> airborne.v1.ToolCallUpdate
+	4,  // 21: airborne.v1.GenerateReplyChunk.code_execution_update:type_name -> airborne.v1.CodeExecutionUpdate
+	23, // 22: airborne.v1.ToolCallUpdate.tool_call:type_name -> airborne.v1.ToolCall
+	24, // 23: airborne.v1.CodeExecutionUpdate.execution:type_name -> airborne.v1.CodeExecutionResult
+	21, // 24: airborne.v1.UsageUpdate.usage:type_name -> airborne.v1.Usage
+	22, // 25: airborne.v1.CitationUpdate.citation:type_name -> airborne.v1.Citation
+	18, // 26: airborne.v1.StreamComplete.provider:type_name -> airborne.v1.Provider
+	21, // 27: airborne.v1.StreamComplete.final_usage:type_name -> airborne.v1.Usage
+	22, // 28: airborne.v1.StreamComplete.citations:type_name -> airborne.v1.Citation
+	23, // 29: airborne.v1.StreamComplete.tool_calls:type_name -> airborne.v1.ToolCall
+	24, // 30: airborne.v1.StreamComplete.code_executions:type_name -> airborne.v1.CodeExecutionResult
+	10, // 31: airborne.v1.StreamComplete.images:type_name -> airborne.v1.GeneratedImage
+	12, // 32: airborne.v1.SelectProviderRequest.triggers:type_name -> airborne.v1.ProviderTrigger
+	18, // 33: airborne.v1.ProviderTrigger.provider:type_name -> airborne.v1.Provider
+	18, // 34: airborne.v1.SelectProviderResponse.provider:type_name -> airborne.v1.Provider
+	25, // 35: airborne.v1.GenerateReplyRequest.ProviderConfigsEntry.value:type_name -> airborne.v1.ProviderConfig
+	0,  // 36: airborne.v1.AIBoxService.GenerateReply:input_type -> airborne.v1.GenerateReplyRequest
+	0,  // 37: airborne.v1.AIBoxService.GenerateReplyStream:input_type -> airborne.v1.GenerateReplyRequest
+	11, // 38: airborne.v1.AIBoxService.SelectProvider:input_type -> airborne.v1.SelectProviderRequest
+	1,  // 39: airborne.v1.AIBoxService.GenerateReply:output_type -> airborne.v1.GenerateReplyResponse
+	2,  // 40: airborne.v1.AIBoxService.GenerateReplyStream:output_type -> airborne.v1.GenerateReplyChunk
+	13, // 41: airborne.v1.AIBoxService.SelectProvider:output_type -> airborne.v1.SelectProviderResponse
+	39, // [39:42] is the sub-list for method output_type
+	36, // [36:39] is the sub-list for method input_type
+	36, // [36:36] is the sub-list for extension type_name
+	36, // [36:36] is the sub-list for extension extendee
+	0,  // [0:36] is the sub-list for field type_name
 }
 
 func init() { file_airborne_v1_airborne_proto_init() }
@@ -1348,7 +1472,7 @@ func file_airborne_v1_airborne_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_airborne_v1_airborne_proto_rawDesc), len(file_airborne_v1_airborne_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

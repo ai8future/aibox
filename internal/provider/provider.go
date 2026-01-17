@@ -167,6 +167,30 @@ type InlineImage struct {
 	Filename string
 }
 
+// GeneratedImage represents an image produced by an image generation service
+type GeneratedImage struct {
+	// Data contains the raw image bytes (typically JPEG)
+	Data []byte
+
+	// MIMEType of the image (e.g., "image/jpeg", "image/png")
+	MIMEType string
+
+	// Prompt used to generate this image
+	Prompt string
+
+	// AltText for accessibility
+	AltText string
+
+	// Width in pixels
+	Width int
+
+	// Height in pixels
+	Height int
+
+	// ContentID for email embedding (cid:xxx)
+	ContentID string
+}
+
 // ProviderConfig contains provider-specific configuration
 type ProviderConfig struct {
 	APIKey          string
@@ -204,11 +228,19 @@ type GenerateResult struct {
 	// CodeExecutions contains results from code execution
 	CodeExecutions []CodeExecutionResult
 
+	// Images contains AI-generated images
+	Images []GeneratedImage
+
 	// RequestJSON contains the raw API request for debugging
 	RequestJSON []byte
 
 	// ResponseJSON contains the raw API response for debugging
 	ResponseJSON []byte
+}
+
+// HasImages returns true if the result contains generated images
+func (r GenerateResult) HasImages() bool {
+	return len(r.Images) > 0
 }
 
 // Usage contains token usage metrics

@@ -2,12 +2,23 @@ package tenant
 
 // TenantConfig defines per-tenant overrides loaded from JSON/YAML files.
 type TenantConfig struct {
-	TenantID    string                    `json:"tenant_id" yaml:"tenant_id"`
-	DisplayName string                    `json:"display_name" yaml:"display_name"`
-	Providers   map[string]ProviderConfig `json:"providers" yaml:"providers"`
-	RateLimits  RateLimitConfig           `json:"rate_limits" yaml:"rate_limits"`
-	Failover    FailoverConfig            `json:"failover" yaml:"failover"`
-	Metadata    map[string]string         `json:"metadata,omitempty" yaml:"metadata,omitempty"`
+	TenantID        string                    `json:"tenant_id" yaml:"tenant_id"`
+	DisplayName     string                    `json:"display_name" yaml:"display_name"`
+	Providers       map[string]ProviderConfig `json:"providers" yaml:"providers"`
+	RateLimits      RateLimitConfig           `json:"rate_limits" yaml:"rate_limits"`
+	Failover        FailoverConfig            `json:"failover" yaml:"failover"`
+	ImageGeneration ImageGenerationConfig     `json:"image_generation" yaml:"image_generation"`
+	Metadata        map[string]string         `json:"metadata,omitempty" yaml:"metadata,omitempty"`
+}
+
+// ImageGenerationConfig holds settings for AI image generation.
+type ImageGenerationConfig struct {
+	Enabled         bool     `json:"enabled" yaml:"enabled"`
+	Provider        string   `json:"provider" yaml:"provider"`                   // "gemini" or "openai"
+	Model           string   `json:"model,omitempty" yaml:"model,omitempty"`     // e.g., "gemini-2.5-flash-image", "dall-e-3"
+	TriggerPhrases  []string `json:"trigger_phrases" yaml:"trigger_phrases"`     // e.g., ["@image", "generate image"]
+	FallbackOnError bool     `json:"fallback_on_error" yaml:"fallback_on_error"` // Continue with text on failure
+	MaxImages       int      `json:"max_images,omitempty" yaml:"max_images,omitempty"`
 }
 
 // ProviderConfig holds per-tenant provider settings.

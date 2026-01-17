@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.7] - 2026-01-17
+
+### Added
+- **AI Image Generation Support** (`internal/imagegen/`):
+  - New package for generating images via Gemini (default) and OpenAI DALL-E providers
+  - Config-driven trigger phrases from tenant config (e.g., `@image`, `generate image`)
+  - Supports tenant-level API key configuration via existing provider config
+  - Automatic PNG to JPEG conversion for smaller response sizes
+  - Images included in gRPC `GenerateReplyResponse.images` field
+
+- **GeneratedImage Proto Message** (`api/proto/airborne/v1/airborne.proto`):
+  - New `GeneratedImage` message with data, mime_type, prompt, alt_text, width, height, content_id
+  - Added `images` field to `GenerateReplyResponse` and `StreamComplete`
+
+- **Tenant Image Generation Config** (`internal/tenant/config.go`):
+  - New `ImageGenerationConfig` struct with enabled, provider, model, trigger_phrases, fallback_on_error, max_images
+
+Agent: Claude:Opus 4.5
+
 ## [1.1.6] - 2026-01-17
 
 ### Added

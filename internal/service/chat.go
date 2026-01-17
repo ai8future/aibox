@@ -10,6 +10,7 @@ import (
 
 	"github.com/ai8future/airborne/internal/auth"
 	sanitize "github.com/ai8future/airborne/internal/errors"
+	"github.com/ai8future/airborne/internal/imagegen"
 	"github.com/ai8future/airborne/internal/provider"
 	"github.com/ai8future/airborne/internal/provider/anthropic"
 	"github.com/ai8future/airborne/internal/provider/gemini"
@@ -35,17 +36,20 @@ type ChatService struct {
 	anthropicProvider provider.Provider
 	rateLimiter       *auth.RateLimiter
 	ragService        *rag.Service
+	imageGen          *imagegen.Client
 }
 
 // NewChatService creates a new chat service.
 // The ragService parameter is optional - pass nil to disable self-hosted RAG.
-func NewChatService(rateLimiter *auth.RateLimiter, ragService *rag.Service) *ChatService {
+// The imageGen parameter is optional - pass nil to disable image generation.
+func NewChatService(rateLimiter *auth.RateLimiter, ragService *rag.Service, imageGen *imagegen.Client) *ChatService {
 	return &ChatService{
 		openaiProvider:    openai.NewClient(),
 		geminiProvider:    gemini.NewClient(),
 		anthropicProvider: anthropic.NewClient(),
 		rateLimiter:       rateLimiter,
 		ragService:        ragService,
+		imageGen:          imageGen,
 	}
 }
 
@@ -248,6 +252,12 @@ func (s *ChatService) GenerateReply(ctx context.Context, req *pb.GenerateReplyRe
 	// Add RAG citations to result if we used self-hosted RAG
 	if len(prepared.ragChunks) > 0 {
 		result.Citations = append(result.Citations, ragChunksToCitations(prepared.ragChunks)...)
+	}
+
+	// Check for image generation trigger in response
+	generatedImages := s.processImageGeneration(ctx, result.Text)
+	if len(generatedImages) > 0 {
+		result.Images = generatedImages
 	}
 
 	return s.buildResponse(result, prepared.provider.Name(), false, "", ""), nil
@@ -645,6 +655,10 @@ func (s *ChatService) buildResponse(result provider.GenerateResult, providerName
 		resp.CodeExecutions = append(resp.CodeExecutions, convertCodeExecution(ce))
 	}
 
+	for _, img := range result.Images {
+		resp.Images = append(resp.Images, convertGeneratedImage(img))
+	}
+
 	if failedOver {
 		resp.FailedOver = true
 		resp.OriginalProvider = mapProviderToProto(originalProvider)
@@ -652,6 +666,83 @@ func (s *ChatService) buildResponse(result provider.GenerateResult, providerName
 	}
 
 	return resp
+}
+
+// processImageGeneration checks for image generation triggers and generates images.
+func (s *ChatService) processImageGeneration(ctx context.Context, responseText string) []provider.GeneratedImage {
+	if s.imageGen == nil {
+		return nil
+	}
+
+	// Get tenant config
+	tenantCfg := auth.TenantFromContext(ctx)
+	if tenantCfg == nil {
+		return nil
+	}
+
+	// Convert tenant config to imagegen config
+	imgCfg := &imagegen.Config{
+		Enabled:         tenantCfg.ImageGeneration.Enabled,
+		Provider:        tenantCfg.ImageGeneration.Provider,
+		Model:           tenantCfg.ImageGeneration.Model,
+		TriggerPhrases:  tenantCfg.ImageGeneration.TriggerPhrases,
+		FallbackOnError: tenantCfg.ImageGeneration.FallbackOnError,
+		MaxImages:       tenantCfg.ImageGeneration.MaxImages,
+	}
+
+	if !imgCfg.IsEnabled() {
+		return nil
+	}
+
+	// Check for image trigger in response
+	imgReq := s.imageGen.DetectImageRequest(responseText, imgCfg)
+	if imgReq == nil {
+		return nil
+	}
+
+	// Get API keys from tenant provider config
+	if geminiCfg, ok := tenantCfg.GetProvider("gemini"); ok {
+		imgReq.GeminiAPIKey = geminiCfg.APIKey
+	}
+	if openaiCfg, ok := tenantCfg.GetProvider("openai"); ok {
+		imgReq.OpenAIAPIKey = openaiCfg.APIKey
+	}
+
+	slog.Info("image generation triggered",
+		"provider", imgCfg.Provider,
+		"prompt_preview", truncateString(imgReq.Prompt, 100),
+	)
+
+	// Generate image
+	img, err := s.imageGen.Generate(ctx, imgReq)
+	if err != nil {
+		slog.Warn("image generation failed",
+			"error", err,
+			"fallback_on_error", imgCfg.FallbackOnError,
+		)
+		// If fallback is enabled, return nil (continue without image)
+		if imgCfg.FallbackOnError {
+			return nil
+		}
+		// Otherwise still return nil but log at higher severity
+		return nil
+	}
+
+	slog.Info("image generated successfully",
+		"width", img.Width,
+		"height", img.Height,
+		"size_bytes", len(img.Data),
+	)
+
+	return []provider.GeneratedImage{img}
+}
+
+// truncateString truncates a string for logging purposes.
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
 }
 
 // Helper functions
@@ -772,4 +863,16 @@ func convertCodeExecution(ce provider.CodeExecutionResult) *pb.CodeExecutionResu
 		})
 	}
 	return result
+}
+
+func convertGeneratedImage(img provider.GeneratedImage) *pb.GeneratedImage {
+	return &pb.GeneratedImage{
+		Data:      img.Data,
+		MimeType:  img.MIMEType,
+		Prompt:    img.Prompt,
+		AltText:   img.AltText,
+		Width:     int32(img.Width),
+		Height:    int32(img.Height),
+		ContentId: img.ContentID,
+	}
 }
