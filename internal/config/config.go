@@ -153,7 +153,7 @@ func defaultConfig() *Config {
 			},
 			"gemini": {
 				Enabled:      true,
-				DefaultModel: "gemini-2.5-flash",
+				DefaultModel: "gemini-3-pro-preview",
 			},
 			"anthropic": {
 				Enabled:      true,

@@ -162,12 +162,19 @@ func (c *Client) GenerateReply(ctx context.Context, params provider.GeneratePara
 	}
 
 	// Configure thinking (not supported on Flash models)
+	// For Pro models (non-Flash), default to HIGH thinking level like Solstice
 	modelLower := strings.ToLower(model)
 	isFlashModel := strings.Contains(modelLower, "flash")
+	isProModel := strings.Contains(modelLower, "pro")
 	if !isFlashModel {
 		thinkingLevel := cfg.ExtraOptions["thinking_level"]
 		thinkingBudgetStr := cfg.ExtraOptions["thinking_budget"]
 		includeThoughts := cfg.ExtraOptions["include_thoughts"] == "true"
+
+		// Default to HIGH thinking level for Pro models (matching Solstice behavior)
+		if thinkingLevel == "" && isProModel {
+			thinkingLevel = "HIGH"
+		}
 
 		if thinkingLevel != "" || thinkingBudgetStr != "" || includeThoughts {
 			thinkingConfig := &genai.ThinkingConfig{
@@ -423,12 +430,19 @@ func (c *Client) GenerateReplyStream(ctx context.Context, params provider.Genera
 	}
 
 	// Configure thinking (not supported on Flash models)
+	// For Pro models (non-Flash), default to HIGH thinking level like Solstice
 	modelLower := strings.ToLower(model)
 	isFlashModel := strings.Contains(modelLower, "flash")
+	isProModel := strings.Contains(modelLower, "pro")
 	if !isFlashModel {
 		thinkingLevel := cfg.ExtraOptions["thinking_level"]
 		thinkingBudgetStr := cfg.ExtraOptions["thinking_budget"]
 		includeThoughts := cfg.ExtraOptions["include_thoughts"] == "true"
+
+		// Default to HIGH thinking level for Pro models (matching Solstice behavior)
+		if thinkingLevel == "" && isProModel {
+			thinkingLevel = "HIGH"
+		}
 
 		if thinkingLevel != "" || thinkingBudgetStr != "" || includeThoughts {
 			thinkingConfig := &genai.ThinkingConfig{

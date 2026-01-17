@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.8] - 2026-01-17
+
+### Changed
+- **Gemini Defaults to Match Solstice**:
+  - Default model changed from `gemini-2.5-flash` to `gemini-3-pro-preview` (Gemini 3 Pro with long thinking)
+  - Pro models now default to `thinking_level: HIGH` (matching Solstice behavior)
+  - Updated default in `configs/airborne.yaml`, `internal/config/config.go`, and `configs/email4ai.json`
+  - Thinking config applied to both streaming and non-streaming Generate paths
+
+Agent: Claude:Opus 4.5
+
 ## [1.1.7] - 2026-01-17
 
 ### Added
