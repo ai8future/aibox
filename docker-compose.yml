@@ -7,7 +7,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "50051:50051"
+      - "50612:50612"
     environment:
       - AIRBORNE_ADMIN_TOKEN=${AIRBORNE_ADMIN_TOKEN:-}
       - AIRBORNE_AUTH_MODE=static

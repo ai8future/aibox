@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2026-01-18
+
+### Changed
+- Randomized default ports to avoid collisions:
+  - GRPC port: 50051 → 50612
+  - HTTP admin port: 50052 → 8473
+- Updated docker-compose.yml port mapping to match
+
+Agent: Claude:Opus 4.5
+
 ## [1.2.0] - 2026-01-18
 
 ### Added
